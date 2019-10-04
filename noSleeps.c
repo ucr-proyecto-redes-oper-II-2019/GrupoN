@@ -8,7 +8,6 @@
 #include <netinet/in.h>
 #include <omp.h>
 #include "cola.h"
-//#include <vector>
 #include <signal.h>
 #define PORT	 8083
 #define MAXLINE  512
@@ -17,7 +16,6 @@
 
 int sockfd;
 char interfazSend_buff[MAXLINE];
-//vector<vector<char>> interfazSend_buff(WINDOWLEN,vector<char>(MAXLINE));
 int bandera_buffSend_lleno = 0; //0 si esta vacio y 1 si esta lleno
 int bandera_buffSend_FA = 0; // 0 si aun no ha encontrado en Final de Archivo, 1 si ya finalizo
 char interfazRecv_buff[MAXLINE];
@@ -26,16 +24,17 @@ int bandera_buffRecv_FA = 0; // 0 si aun no ha encontrado en Final de Archivo, 1
 Cola cola_send(WINDOWLEN,PACKAGE_SIZE, 0);
 Cola cola_recv(WINDOWLEN,MAXLINE, 0);
 struct sockaddr_in servaddr, cliaddr;
-//int contador_interfazSend = 1; //indica el elemento que va insertando la interfaz send
-//int contador_interfazRecv = 0; //indica el elemento que va insertando la interfaz recv
-//int posvaciainterfazrecv = 0;
-//int cantidad_elementos_interfazSend = 0;//indica la cantidad de elementos en la interfaz send
-//int cantidad_elementos_interfazRecv = 0;//indica la cantidad de elementos en la interfaz recv
-//int ultimo_consumido_de_interfazSend = 1; //guarda el numero de paquete que sera ingresado a la cola
 int num_paquete = 0;
 int ack = 0;
 
-
+/*
+Efecto:
+	Si entra la señal enlazada y el socket continua abierto, lo cierra.
+Requiere:
+	Enlazar una señal a esta función.
+Modifica:
+	El descriptor de archivo del socket.
+*/
 void intHandler(int senal) {
 	if(senal == SIGINT && sockfd){
 		close(sockfd);
@@ -44,12 +43,29 @@ void intHandler(int senal) {
 	exit(1);
 }
 
+/*
+Efecto:
+	Copia n elementos del buffer fuente en el de destino.
+Requiere:
+	Inicialización tanto del buffer fuente como del destino.
+	No ingresar un tamaño inválido.
+Modifica:
+	El buffer destino.
+*/
 void copiar(char src[], char dest[], int size){//copia src a dest
 		for(int i = 0; i < size; i++){
 			dest[i] = src[i];
 		}
 }
 
+/*
+Efecto:
+	Verifica si el buffer está vacío.
+Requiere:
+	El buffer inicializado.
+Modifica:
+	
+*/
 int esta_vacio(char buffer[MAXLINE]){//devuelve 0 si buffer no esta vacio y 1 si si
 	for(int i = 0; i < MAXLINE; i++){
 		if(buffer[i] != '\0'){
@@ -60,7 +76,15 @@ int esta_vacio(char buffer[MAXLINE]){//devuelve 0 si buffer no esta vacio y 1 si
 	return 1;
 }
 
-
+/*
+Efecto:
+	Envía hacia la interfáz los bloques a empaquetar.
+Requiere:
+	FILE inicializado.
+Modifica:
+	La interfáz.
+	Bandera para activar envío
+*/
 void capa_Superior_Emisor(FILE * fd){
 	int leido = 1;
     char buff_temp[MAXLINE];
@@ -85,8 +109,14 @@ void capa_Superior_Emisor(FILE * fd){
 		}
 }
 
-
-
+/*
+Efecto:
+	Actualiza la bandera del buffer de la interfáz.
+Requiere:
+	El buffer de la interfáz inicializado.
+Modifica:
+	Bandera de estado del buffer de la interfáz.
+*/
 void actualizar_bandera_interfaz_receptor(){
 	if(esta_vacio(interfazRecv_buff)){
 		bandera_buffRecv_lleno = 0;
@@ -94,12 +124,30 @@ void actualizar_bandera_interfaz_receptor(){
 		bandera_buffRecv_lleno = 1;
 	}
 }
+
+/*
+Efecto:
+	Elimina lo que hay en la interfáz.
+Requiere:
+	El buffer de la interfáz inicializado.
+Modifica:
+	El buffer de a interfáz
+*/
 void eliminar_elemento_interfaz(char interfaz_buff[MAXLINE]){//limpia el vector
 	for(int i = 0; i < MAXLINE; i++){
 		interfaz_buff[i] = '\0';
 	}
 
 }
+
+/*
+Efecto:
+	Intenta insertar un dato en el bloque de la interfáz.
+Requiere:
+	Buffer de la interfáz inicializada.
+Modifica:
+	Buffer de la interfáz.
+*/
 //devuelve 1 si se inserto y cero si no se logro insertar
 int insertar_interfaz_receptor(char elemento[MAXLINE]){
 	if(!bandera_buffRecv_lleno && !esta_vacio(elemento)){
@@ -110,6 +158,14 @@ int insertar_interfaz_receptor(char elemento[MAXLINE]){
 	return 0;
 }
 
+/*
+Efecto:
+	Intenta sacar los datos de la interfáz.
+Requiere:
+	El buffer de la interfáz inicializado.
+Modifica:
+	El buffer de la interfáz.
+*/
 //saca de la interfaz el elemento que se le indique por medio de num_elemento y lo mete a parte_archivo. devuelve 1 si el elemento indicado no era vacio y 0 si si
 int sacar_interfaz_receptor(char parte_archivo[MAXLINE]){
 	if(bandera_buffRecv_lleno){
@@ -121,6 +177,14 @@ int sacar_interfaz_receptor(char parte_archivo[MAXLINE]){
 	return 0;
 }
 
+/*
+Efecto:
+	Coloca el header en el paquete.
+Requiere:
+	Buffer a empaquetar inicializado.
+Modifica:
+	El buffer a empaquetar.
+*/
 void set_header(int SNmin,char buff_a_empaquetar[PACKAGE_SIZE]){ //primer parametro es lo que retorna get_Nmin de cola. LLena los primeros 4 bytes del buffer que sera enviado finalmente
 	char * p;
 	p = (char *)&SNmin;
@@ -131,6 +195,14 @@ void set_header(int SNmin,char buff_a_empaquetar[PACKAGE_SIZE]){ //primer parame
 
 }
 
+/*
+Efecto:
+	Crea el último paquete para cerrar la conexión.
+Requiere:
+	El buffer a empaquetar esté inicializado.
+Modifica:
+	El buffer a empaquetar.
+*/
 void crear_ultimo_paquete(char buff_a_empaquetar[PACKAGE_SIZE]){
 	set_header(num_paquete,buff_a_empaquetar);
 	buff_a_empaquetar[4] = '*';
@@ -140,23 +212,55 @@ void crear_ultimo_paquete(char buff_a_empaquetar[PACKAGE_SIZE]){
 
 }
 
+/*
+Efecto:
+	Sacar los datos del paquete y los mete en datos.
+Requiere:
+	Los dos buffer inicializados.
+Modifica:
+	El buffer donde se desean colocar los paquetes.
+*/
 void sacar_datos(char * paquete, char * buffer){//saca los datos del paquete buffer y los mete a datos
 	for (int i = 0; i < MAXLINE; i++) {
 		paquete[i] = buffer[i+4];
 	}
 }
 
+/*
+Efecto:
+	Mete los datos del buffer en el paquete.
+Requiere:
+	Ambos buffers inicializados.
+Modifica:
+	El buffer paquete.
+*/
 void meter_datos(char * paquete, char * buffer){
 	for (int i = 0; i < MAXLINE; i++) {
 		paquete[i+4] = buffer[i];
 	}
 }
 
+/*
+Efecto:
+	Empaqueta el buffer.
+Requiere:
+	El buffer inicializado.
+Modifica:
+	El buffer a empaquetar.
+*/
 void empaquetar(char * buff_a_empaquetar, char * datos){
   set_header(num_paquete,buff_a_empaquetar);
   meter_datos(buff_a_empaquetar,datos);
 }
 
+/*
+Efecto:
+	Intenta meter los datos de la interfáz en la cola.
+Requiere:
+	El buffer de la interfáz y la cola inicializada correctamente.
+Modifica:
+	La cola.
+*/
 int poner_en_colaSend(){//retorna si se logro meter en la cola
 	int put = 0;
 	if(bandera_buffSend_lleno){
@@ -174,8 +278,14 @@ int poner_en_colaSend(){//retorna si se logro meter en la cola
 	return put;
 }
 
-
-
+/*
+Efecto:
+	Obtiene el header del paquete.
+Requiere:
+	El buffer de paquete inicializado.
+Modifica:
+	El buffer header.
+*/
 void get_Header(char* paquete,char * header){
 	header[0] = paquete[3];
 	header[1] = paquete[2];
@@ -184,6 +294,15 @@ void get_Header(char* paquete,char * header){
 
 }
 
+/*
+Efecto:
+	Se obtiene el paquete que está en la cola y se envía.
+Requiere:
+	La cola inicializada.
+	Conexión con el socket establecida.
+Modifica:
+	
+*/
 void enviar(){
   char buff_temp[PACKAGE_SIZE];
   int i;
@@ -195,6 +314,15 @@ void enviar(){
   }
 }
 
+/*
+Efecto:
+	Envía ack del paquete que se necesita.
+Requiere:
+	Cola inicializada.
+	Conexión con el socket establecida.	
+Modifica:
+	
+*/
 void mandar_ack(char* ip, int port){
 	char paquete_ack[PACKAGE_SIZE];
 	paquete_ack[0] = (char)1;
@@ -209,6 +337,14 @@ void mandar_ack(char* ip, int port){
 	}
 }
 
+/*
+Efecto:
+	Verifica si el paquete es el último en la conexión.
+Requiere:
+	El buffer inicializado.
+Modifica:
+	
+*/
 int revisar_si_es_ultimo_paquete(char paquete[MAXLINE]){//devuelve 0 si no es el ultimo paquete, 1 si si es
 	if(paquete[0] == '*'){
 		for(int i = 1; i < MAXLINE; i++){
