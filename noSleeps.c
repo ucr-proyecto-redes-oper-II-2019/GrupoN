@@ -62,7 +62,7 @@ void copiar(char src[], char dest[], int size){//copia src a dest
 Efecto:
 	Verifica si el buffer está vacío.
 Requiere:
-	El buffer inicializado.
+	El buffer inicializado con el caracter \0.
 Modifica:
 	
 */
