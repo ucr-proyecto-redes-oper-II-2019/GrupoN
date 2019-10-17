@@ -85,16 +85,26 @@ int verify(double X[15][15], int dim) {
 	 return(1);
 }
 
+void inicializar(FILE* respaldo, double matrizA[15][15], double matrizB[15][15],
+	double[15][15] temp, double* det, double * sdet, double* c, int* dim, int* n, int* i, int* iters, int* totalprod){
+
+}
 /* --------------------------MAIN---------------------------------*/
 int main(void) {
 /* ----- Variables -----*/
-	signal(SIGINT,handler);
-	FILE *fdata, *fout, *fbackup;
+	FILE *fdata, *fout;
 	int dim, n, i, j, iters, totalprod;
 	double A[15][15], B[15][15], I[15][15], Temp[15][15], det, sdet, c;
 
-	// intenta leer desde un backup
-	// leer _backup(&dim,);
+	/* --- Enlace a señal ---*/
+	signal(SIGINT,handler);
+
+
+	/* --- Comprobación de respaldo ---*/
+	FILE * respaldo = fopen("respaldo.bin", "r");
+	if( respaldo ) {
+		inicializar(respaldo, A, B, Temp, &det, &sdet, &c, &dim, &n, &i, &iters, &totalprod);
+	}
 
 	/* --- Instrucciones ---*/
 	fdata = fopen("matrices.dat", "r");
@@ -110,24 +120,14 @@ int main(void) {
 	}
 	fclose(fout);
 
-
-
 	fscanf(fdata, "%d %lf", &dim, &det);
 	lea(fdata, A, dim);
 	lea(fdata, B, dim);
 	fclose(fdata);
 
-	fbackup  = fopen("backup.txt", "w");
-	if( fbackup == NULL ) {
-		perror("Error opening backup.txt: ");
-		return(-1);
-	}
-	fclose(fout);
-
 	sdet = sqrt(det);
 	c = 1.0/sdet;
 	srand(time(0));
-
 	printf("Leidos: dim=%d, det=%lf, sdet=%lf\n", dim, det, sdet);
 	printf("\nMatriz A leida:\n");
 	imprima(A, dim);
@@ -139,9 +139,7 @@ int main(void) {
 
 	iters = 0;
 	totalprod = 0;
-	// intentar agregar las cosas en rangos más pequeños
-
-	while (!interrupcion) {
+	while (1) {
 		fout  = fopen("trace.txt", "a");
 		if( fout == NULL ) {
 			perror("Error opening trace.txt: ");
@@ -151,8 +149,6 @@ int main(void) {
 		for (i=0; i<n; i++) {
 			mult(I, A, Temp, dim);
 			scalar(I, dim, c);
-			// guardar(tam,);
-			// etiqueta:
 		}
 		for (i=0; i<n; i++) {
 			mult(I, B, Temp, dim);
@@ -169,11 +165,6 @@ int main(void) {
 			printf("Iter %d presenta error. Se cancela el programa\n", iters+1);
 			fprintf(fout, "Iter %d presenta error. Se cancela el programa\n", iters+1);
 			exit(1);
-		}
-		if (interrupcion) {
-			fwrite(&contador,sizeof(contador),1,fptr);
-		//cierra el archivo
-			fclose(fptr);
 		}
 		fclose(fout);
 		usleep(100000);
