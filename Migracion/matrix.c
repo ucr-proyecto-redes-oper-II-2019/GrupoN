@@ -85,9 +85,17 @@ int verify(double X[15][15], int dim) {
 	 return(1);
 }
 
-void inicializar(FILE* respaldo, double matrizA[15][15], double matrizB[15][15],
-	double[15][15] temp, double* det, double * sdet, double* c, int* dim, int* n, int* i, int* iters, int* totalprod){
+/*------------------*/
+/*
 
+*/
+void inicializar(FILE* respaldo, double matrizA[15][15], double matrizB[15][15],
+		double temp[15][15], double* det, double * sdet, double* c,
+		int* dim, int* n, int* i, int* iters, int* totalprod){
+
+	fscanf(respaldo, "%d %lf", dim, det);
+	lea(respaldo, A, *dim);
+	lea(respaldo, B, *dim);
 }
 /* --------------------------MAIN---------------------------------*/
 int main(void) {
@@ -104,6 +112,7 @@ int main(void) {
 	FILE * respaldo = fopen("respaldo.bin", "r");
 	if( respaldo ) {
 		inicializar(respaldo, A, B, Temp, &det, &sdet, &c, &dim, &n, &i, &iters, &totalprod);
+		fclose(respaldo);
 	}
 
 	/* --- Instrucciones ---*/
