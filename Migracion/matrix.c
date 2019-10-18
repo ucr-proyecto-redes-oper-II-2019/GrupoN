@@ -87,7 +87,19 @@ int verify(double X[15][15], int dim) {
 
 /*------------------*/
 /*
+Crea el archivo respaldo.dat,y guarda toda la información necesaria para la 
+migración y el restarteo del programa
+*/
+void guardar(double matrizA[15][15], double matrizB[15][15],
+		double temp[15][15], double* det, double * sdet, double* c,
+		int* dim, int* n, int* i, int* iters, int* totalprod){
 
+	
+}
+
+/*------------------*/
+/*
+Inicializa todas las variables en caso de encontrar una archivo de respaldo.dat
 */
 void inicializar(FILE* respaldo, double matrizA[15][15], double matrizB[15][15],
 		double temp[15][15], double* det, double * sdet, double* c,
@@ -158,10 +170,16 @@ int main(void) {
 		for (i=0; i<n; i++) {
 			mult(I, A, Temp, dim);
 			scalar(I, dim, c);
+			// se debe de llamar a guardar(); y enviarle todos los datos necesarios
+			// y luego hacer un exit para terminar el programa.
+			FOR1:
 		}
 		for (i=0; i<n; i++) {
 			mult(I, B, Temp, dim);
 			scalar(I, dim, c);
+			// se debe de llamar a guardar(); y enviarle todos los datos necesarios
+			// y luego hacer un exit para terminar el programa.
+			FOR2:
 		}
 		if (verify(I, dim)) {
 			iters++;
