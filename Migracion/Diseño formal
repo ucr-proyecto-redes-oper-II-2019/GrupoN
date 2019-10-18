@@ -1,0 +1,16 @@
+Lógica de guardado
+Se tendrán una serie de variables globales que representarán lo mismo que las variables locales que están dentro del main. Esto con el propósito de no alterar la estructura del programa original y que solo hayan cosas agregadas, no modificadas. El guardado de las variables locales requeridas se hará después de cada uno de los fors que hayan dentro del while más externo. Asimismo, se le asignará una etiqueta inmediatamente después de cada for ya que estos serán los lugares en donde se podrá retomar la ejecución después de que el proceso haya sido interrumpido. Esta etiqueta será representada con un número que se almacenará también como parte del archivo con la información temporal, cuando este sea leído para la reanudación de la ejecución se irá a la etiqueta asociada al número leído.
+
+Variables a guardar: dim, n, i, j, iters, totalprod, matriz A, matriz B, matriz I, matriz Temp, det, sdet, c.
+
+La asignación para guardar las variables locales en las globales creadas se hará mediante el llamado de un método denominado guardar. Este recibirá como parámetro todas las variables locales y hará la respectiva asignación. 
+
+Función handler (captura la señal del Ctrl C)
+Cuando se lea esta señal, los datos que se han ido guardando temporalmente se escribirán en el archivo que permitirá reanudar la ejecución siguiente. Inmediatamente después se finalizará la ejecución.
+Casos
+Este programa se dividirá en dos casos: la primera vez que se ejecute el programa y cuando se necesite retomar de corridas previas. El caso en el que se encuentre dependerá de si el archivo para reanudar ya existe. Si existe significa que ya hubo uno ejecución anterior y sino se toma como si fuera la primera vez.
+Caso 1: primera iteración
+Se inicializan todas las variables con los valores que se leen del archivo matrices.dat o con los valores definidos por el programa original, también se creará el archivo para reanudar.
+Caso 2: reanudar 
+Todas las variables serán inicializadas con los datos que se encuentran en el archivo de reanudar y, posterior a la inicialización, se saltará a algún lugar dentro del ciclo que haya sido marcado con una etiqueta (también indicado en el archivo de reanudar). El entero leído determinará a cuál etiqueta saltar, esto será implementado con un switch que divida los casos de los posibles valores del entero leído y ejecute un goto a donde corresponda.
+
