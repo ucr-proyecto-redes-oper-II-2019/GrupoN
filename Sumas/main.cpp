@@ -1,19 +1,19 @@
 #include "tcpl.h"
 #include <omp.h>
 #include <iostream>
-#define HILOS 8
-using namespace std;
+#define HILOS 48
+using namespace std; 
 
 int suma_vectorial(int * v, int tam, int aviso){
     int sum = 0;
     TCPL tc= TCPL(aviso);
-    int vector[HILOS] = {0,0,0,0,0,0,0,0};
+    int vector[HILOS] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     #pragma omp parallel for num_threads(HILOS) shared(vector,tc)
     for (int i = 0; i < tam; i++) {
         vector[omp_get_thread_num()] = tc.suma(vector[omp_get_thread_num()], v[i]);
         #pragma omp critical
         tc.aumentar();
-        
+
     }
     #pragma omp barrier
     for (int i = 0; i < HILOS; i++) {
