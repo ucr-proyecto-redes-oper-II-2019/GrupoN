@@ -1,14 +1,23 @@
 #include "tcpl.h"
 #include <omp.h>
 #include <iostream>
-#define HILOS 48
-using namespace std; 
+using namespace std;
+#define CANT_HILOS 12
+
+void limpiar(int* hilos, int tam){
+    for (int i = 0; i < tam; i++) {
+        hilos[i] = 0;
+    }
+}
 
 int suma_vectorial(int * v, int tam, int aviso){
     int sum = 0;
     TCPL tc= TCPL(aviso);
-    int vector[HILOS] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    #pragma omp parallel for num_threads(HILOS) shared(vector,tc)
+    int hilos = omp_get_num_procs();
+    hilos = CANT_HILOS*hilos;
+    int vector[hilos];
+    limpiar(vector, hilos);
+    #pragma omp parallel for num_threads(hilos) shared(vector,tc)
     for (int i = 0; i < tam; i++) {
         vector[omp_get_thread_num()] = tc.suma(vector[omp_get_thread_num()], v[i]);
         #pragma omp critical
@@ -16,11 +25,11 @@ int suma_vectorial(int * v, int tam, int aviso){
 
     }
     #pragma omp barrier
-    for (int i = 0; i < HILOS; i++) {
+    for (int i = 0; i < hilos; i++) {
         sum = tc.suma(sum,vector[i]);
         tc.aumentar();
     }
-    cout << "El resultado es : " << sum << endl;
+    cout << "El resultado es : " << sum << " , cantidad de hilos "<< hilos << endl;
     return sum;
 }
 
