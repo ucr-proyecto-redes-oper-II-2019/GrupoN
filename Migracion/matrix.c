@@ -6,9 +6,6 @@
 #include<signal.h>
 
   FILE *fptr;//puntero del archivo continue
-/* ----- Variables globales ----------- */
-  int dimCopy, nCopy, iCopy, jCopy, itersCopy, totalprodCopy;
-  double ACopy[15][15], BCopy[15][15], ICopy[15][15], TempCopy[15][15], detCopy, sdetCopy, cCopy;
   int caso; //variable para determinar de donde se va a reanudar (en cual etiqueta) Caso 1 = goto savePoint1, Caso 2 = goto savePoint2, Caso 3 = goto savePoint3
   int bandera;
 
@@ -157,12 +154,14 @@ void escribirArchivo(){
 void leerDeMatrizEnArchivo(double matriz[15][15]){
   for(int i = 0 ; i < 15 ; i++){
     for(int j = 0; j < 15; j++){
-      fscanf("%f ",matriz[i][j]);
+      fscanf(fptr,"%f ",matriz[i][j]);
     }
   }
 }
-void cargarVariables(){
-  fscanf("%d %d %d %d %d %d %f %f %f %d %d\n", &dimCopy,&nCopy,&iCopy,&jCopy,&itersCopy,&totalprodCopy,&detCopy,&sdetCopy,&cCopy,&caso,&bandera);
+void cargarVariables(int * dimCopy,int * nCopy,int * iCopy,int * jCopy,int * itersCopy,
+		     int * totalprodCopy, double * detCopy,double * sdetCopy,double * cCopy,
+		     double ACopy[15][15], double BCopy[15][15], double ICopy[15][15], double TempCopy[15][15]){
+  fscanf(fptr,"%d %d %d %d %d %d %f %f %f %d %d\n", &dimCopy,&nCopy,&iCopy,&jCopy,&itersCopy,&totalprodCopy,&detCopy,&sdetCopy,&cCopy,&caso,&bandera);
   leerDeMatrizEnArchivo(ACopy);
   leerDeMatrizEnArchivo(BCopy);
   leerDeMatrizEnArchivo(ICopy);
@@ -177,6 +176,9 @@ int main(void) {
     bandera = 0;
     caso = 0;
 
+    if (signal(SIGINT, sig_handler) == SIG_ERR)
+        printf("\ncan't catch SIGINT\n");
+	
 /* --- Instrucciones ---*/
     fdata = fopen("matrices.dat", "r");
     if( fdata == NULL ) {
@@ -199,7 +201,10 @@ int main(void) {
     //el archivo existe
     if(fptr != NULL){
         //CARGAR LAS VARIABLES CON LO QUE SE LEE DEL ARCHIVO
-        cargarVariables();
+        cargarVariables(&dim, &n, &i, &j, &iters, &totalprod, &det, &sdet, &c, A, B, I, Temp);
+	fclose(fptr);
+        srand(time(0));
+	fptr = fopen("continue.dat","w+");
         //extraer tambien el valor de la variable "caso" (va a indicar a cual etiqueta saltar para reanudar)
         switch(caso){
         case 1: goto savePoint1;
@@ -235,9 +240,6 @@ int main(void) {
     iters = 0;
     totalprod = 0;
 
-    if (signal(SIGINT, sig_handler) == SIG_ERR)
-        printf("\ncan't catch SIGINT\n");
-
     while (1) {
         fout  = fopen("trace.txt", "a");
         if( fout == NULL ) {
@@ -249,9 +251,10 @@ int main(void) {
             mult(I, A, Temp, dim);
             scalar(I, dim, c);
             if(bandera) {
-                escribirArchivo();
                 guardar(A, B, I, Temp, det, sdet, c, dim, n, i, j, iters, totalprod);
                 caso = 1;
+                escribirArchivo();
+		fclose(fptr);
                 exit();
             }
 savePoint1:
@@ -262,9 +265,10 @@ savePoint1:
             mult(I, B, Temp, dim);
             scalar(I, dim, c);
             if(bandera) {
-                escribirArchivo();
                 guardar(A, B, I, Temp, det, sdet, c, dim, n, i, j, iters, totalprod);
                 caso = 2;
+                escribirArchivo();
+		fclose(fptr);
                 exit();
             }
 savePoint2:
@@ -285,9 +289,10 @@ savePoint2:
 
 
         if(bandera) {
-            escribirArchivo();
             guardar(A, B, I, Temp, det, sdet, c, dim, n, i, j, iters, totalprod);
             caso = 3;
+            escribirArchivo();
+	    fclose(fptr);
             exit();
         }
 savePoint3:
