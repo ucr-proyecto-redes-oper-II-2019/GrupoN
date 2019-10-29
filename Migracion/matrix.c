@@ -91,7 +91,7 @@ void copiarMatriz(double ACopy[15][15], double A[15][15]){
 
 /* -----------------*/
 
-void guardar(double A[15][15], double B[15][15], double I[15][15], double Temp[15][15], double det, double sdet, double c,int dim, int n, int i, int j, int iters, int totalprod ){
+/*void guardar(double A[15][15], double B[15][15], double I[15][15], double Temp[15][15], double det, double sdet, double c,int dim, int n, int i, int j, int iters, int totalprod ){
 	dimCopy = dim;
 	nCopy = n;
 	iCopy = i;
@@ -105,7 +105,7 @@ void guardar(double A[15][15], double B[15][15], double I[15][15], double Temp[1
 	detCopy = det;
 	sdetCopy = sdet;
 	cCopy = c;
-}
+}*/
 
 /* -----------------*/
 
@@ -116,13 +116,13 @@ void sig_handler(int signo)
 }
 
 void escribirMatrizEnArchivo(double matriz[15][15]){
-  int i
+  int i,j;
   for(i = 0; i < 15; i++){
     for(j = 0; j < 15; j++){
       fprintf(fptr,"%f ", matriz[i][j]);
     }
+    fprintf(fptr,"\n");
   }
-  fprintf(fptr,"\n");
 }
 /* -----------------*/
 /*
@@ -131,37 +131,38 @@ double ACopy[15][15], BCopy[15][15], ICopy[15][15], TempCopy[15][15], detCopy, s
 int caso; //variable para determinar de donde se va a reanudar (en cual etiqueta) Caso 1 = goto savePoint1, Caso 2 = goto savePoint2, Caso 3 = goto savePoint3
 int bandera;
 */
-void escribirArchivo(){
+void escribirArchivo(double A[15][15], double B[15][15], double I[15][15], double Temp[15][15],
+                    double det, double sdet, double c,int dim, int n, int i, int j, int iters,
+                    int totalprod ){
 	//escribir todas las variables globales en archivo continue + variable caso
-  fprintf(fptr,"%d ",dimCopy);
-  fprintf(fptr,"%d ",nCopy);
-  fprintf(fptr,"%d ",iCopy);
-  fprintf(fptr,"%d ",jCopy);
-  fprintf(fptr,"%d ",itersCopy);
-  fprintf(fptr,"%d ",totalprodCopy);
-  fprintf(fptr,"%f ",detCopy);
-  fprintf(fptr,"%f ",sdetCopy);
-  fprintf(fptr,"%f ",cCopy);
-  fprintf(fptr,"%d ",caso);
-  fprintf(fptr,"%d\n",bandera);
-  escribirMatrizEnArchivo(ACopy);
-  escribirMatrizEnArchivo(BCopy);
-  escribirMatrizEnArchivo(ICopy);
-  escribirMatrizEnArchivo(TempCopy);
+  fprintf(fptr,"%d ",dim);
+  fprintf(fptr,"%d ",n);
+  fprintf(fptr,"%d ",i);
+  fprintf(fptr,"%d ",j);
+  fprintf(fptr,"%d ",iters);
+  fprintf(fptr,"%d ",totalprod);
+  fprintf(fptr,"%f ",det);
+  fprintf(fptr,"%f ",sdet);
+  fprintf(fptr,"%f ",c);
+  fprintf(fptr,"%d\n",caso);
+  escribirMatrizEnArchivo(A);
+  escribirMatrizEnArchivo(B);
+  escribirMatrizEnArchivo(I);
+  escribirMatrizEnArchivo(Temp);
 	//exist(); (supongo que es exit)
 }
 
 void leerDeMatrizEnArchivo(double matriz[15][15]){
   for(int i = 0 ; i < 15 ; i++){
     for(int j = 0; j < 15; j++){
-      fscanf(fptr,"%f ",matriz[i][j]);
+      fscanf(fptr,"%lf",&matriz[i][j]);
     }
   }
 }
 void cargarVariables(int * dimCopy,int * nCopy,int * iCopy,int * jCopy,int * itersCopy,
 		     int * totalprodCopy, double * detCopy,double * sdetCopy,double * cCopy,
 		     double ACopy[15][15], double BCopy[15][15], double ICopy[15][15], double TempCopy[15][15]){
-  fscanf(fptr,"%d %d %d %d %d %d %f %f %f %d %d\n", &dimCopy,&nCopy,&iCopy,&jCopy,&itersCopy,&totalprodCopy,&detCopy,&sdetCopy,&cCopy,&caso,&bandera);
+  fscanf(fptr,"%d %d %d %d %d %d %lf %lf %lf %d\n", dimCopy, nCopy, iCopy, jCopy, itersCopy, totalprodCopy, detCopy, sdetCopy, cCopy, &caso);
   leerDeMatrizEnArchivo(ACopy);
   leerDeMatrizEnArchivo(BCopy);
   leerDeMatrizEnArchivo(ICopy);
@@ -178,7 +179,7 @@ int main(void) {
 
     if (signal(SIGINT, sig_handler) == SIG_ERR)
         printf("\ncan't catch SIGINT\n");
-	
+
 /* --- Instrucciones ---*/
     fdata = fopen("matrices.dat", "r");
     if( fdata == NULL ) {
@@ -202,9 +203,10 @@ int main(void) {
     if(fptr != NULL){
         //CARGAR LAS VARIABLES CON LO QUE SE LEE DEL ARCHIVO
         cargarVariables(&dim, &n, &i, &j, &iters, &totalprod, &det, &sdet, &c, A, B, I, Temp);
-	fclose(fptr);
+	    fclose(fptr);
         srand(time(0));
-	fptr = fopen("continue.dat","w+");
+	    fptr = fopen("continue.dat","rw+");
+        fout  = fopen("trace.txt", "a");
         //extraer tambien el valor de la variable "caso" (va a indicar a cual etiqueta saltar para reanudar)
         switch(caso){
         case 1: goto savePoint1;
@@ -213,6 +215,8 @@ int main(void) {
             break;
         case 3: goto savePoint3;
             break;
+        default:
+            printf("%s caso %d","no entra pa",caso);
         }
 
     }//si no existe no hace falta un else, va directo a ejecutar las lineas que le siguen, en caso de que si existia ya salto a donde queria
@@ -250,28 +254,31 @@ int main(void) {
         for (i=0; i<n; i++) {
             mult(I, A, Temp, dim);
             scalar(I, dim, c);
-            if(bandera) {
-                guardar(A, B, I, Temp, det, sdet, c, dim, n, i, j, iters, totalprod);
-                caso = 1;
-                escribirArchivo();
-		fclose(fptr);
-                exit();
-            }
 savePoint1:
+            if(bandera) {
+                //guardar(A, B, I, Temp, det, sdet, c, dim, n, i, j, iters, totalprod);
+                caso = 1;
+                fclose(fout);
+                escribirArchivo(A, B, I, Temp, det, sdet, c, dim, n, i, j, iters, totalprod);
+		        fclose(fptr);
+                exit(0);
+            }
+
         }
 
 
         for (i=0; i<n; i++) {
             mult(I, B, Temp, dim);
             scalar(I, dim, c);
-            if(bandera) {
-                guardar(A, B, I, Temp, det, sdet, c, dim, n, i, j, iters, totalprod);
-                caso = 2;
-                escribirArchivo();
-		fclose(fptr);
-                exit();
-            }
 savePoint2:
+            if(bandera) {
+                //guardar(A, B, I, Temp, det, sdet, c, dim, n, i, j, iters, totalprod);
+                caso = 2;
+                fclose(fout);
+                escribirArchivo(A, B, I, Temp, det, sdet, c, dim, n, i, j, iters, totalprod);
+                fclose(fptr);
+                exit(0);
+            }
         }
 
         if (verify(I, dim)) {
@@ -284,19 +291,19 @@ savePoint2:
         else {
             printf("Iter %d presenta error. Se cancela el programa\n", iters+1);
             fprintf(fout, "Iter %d presenta error. Se cancela el programa\n", iters+1);
-            exit(1);
+            exit(0);
         }
 
 
-        if(bandera) {
-            guardar(A, B, I, Temp, det, sdet, c, dim, n, i, j, iters, totalprod);
-            caso = 3;
-            escribirArchivo();
-	    fclose(fptr);
-            exit();
-        }
 savePoint3:
-
+        if(bandera) {
+            //guardar(A, B, I, Temp, det, sdet, c, dim, n, i, j, iters, totalprod);
+            caso = 3;
+            fclose(fout);
+            escribirArchivo(A, B, I, Temp, det, sdet, c, dim, n, i, j, iters, totalprod);
+	        fclose(fptr);
+            exit(0);
+        }
         fclose(fout);
         usleep(100000);
     }
