@@ -1,3 +1,9 @@
+/**
+* \file concat.h
+* \author Guillermo Ramírez Villalta
+* \date 31/10/2019
+* \brief implementación de la concatenación
+*/
 #include "stdio.h"
 #include <unistd.h>
 #include <stdlib.h>
@@ -11,10 +17,7 @@ int desconcatenar(FILE * dest);
 
 /******************************************************************************/
 /**
-  @brief Abre el archivo a desempaquetar y lo empieza a desconcatenar
-
-  Está hecho estrictamente para los 3 archivos que genera la migración del
-  proceso matrix.c
+  @brief Abre el archivo a desempaquetar y lo empieza a desconcatenar.
 
   @param value state to be written to thew line, mus be 0 or 1
 
@@ -76,7 +79,7 @@ void empaquetar(char ** filename, int num_files) {
 
 /******************************************************************************/
 /**
-  @brief Toma la información necesaria para la cabecera (cantidad de bytes,
+  @brief concatenar: Toma la información necesaria para la cabecera (cantidad de bytes,
   nombre y extensión del arvhivo), y los guarda con el contenido de cada archivo
   en el archivo destino para concatena.
 
@@ -114,7 +117,7 @@ int concatenar(char filename[15], FILE * source,FILE * dest){
 
 /******************************************************************************/
 /**
-  @brief Toma la información necesaria para la cabecera (cantidad de bytes,
+  @brief desconcatenar: Toma la información necesaria para la cabecera (cantidad de bytes,
   nombre y extensión del arvhivo), y los guarda con el contenido de cada archivo
   en el archivo destino para concatena.
 

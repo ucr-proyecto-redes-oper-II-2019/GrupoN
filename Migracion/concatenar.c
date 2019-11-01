@@ -1,3 +1,9 @@
+/**
+* \file concatenar.c
+* \author Guillermo Ramírez Villalta
+* \date 31/10/2019
+* \brief implementación de la concatenación
+*/
 #include<stdio.h>
 #include <curses.h>
 #include <string.h>
@@ -27,12 +33,13 @@ void print_help(){
 
 /******************************************************************************/
 /**
-  @brief print_help: Despliega un cuadro de ayuda.
+  @brief Toma las opciones dadas en argv las valída y selecciona una
+  acción por hacer.
 
   @param argc: cantidad de argumentos.
   @param argv: conjunto de argumentos.
 
-  @returns Retorna 0
+  @returns Retorna 0 para concatenar, 1 para desconcatenar, o despliega la ayuda.
 
 */
 int seleccionar(int argc, char ** argv){
@@ -58,6 +65,16 @@ int seleccionar(int argc, char ** argv){
     exit(EXIT_FAILURE);
 }
 
+/******************************************************************************/
+/**
+  @brief Llamados principales del programa.
+
+  @param argc: cantidad de argumentos.
+  @param argv: conjunto de argumentos.
+
+  @returns Retorna 0.
+
+*/
 int main(int argc, char const *argv[]) {
     char ** arch = (char**)argv;
     int select = seleccionar(argc,arch);
