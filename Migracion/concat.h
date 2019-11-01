@@ -1,6 +1,8 @@
 #include "stdio.h"
 #include <unistd.h>
 #include <stdlib.h>
+#define BUFFER_SIZE 1
+#define NAME_LEN 100
 
 
 int concatenar(char filename[15], FILE * source,FILE * dest);
@@ -19,18 +21,21 @@ int desconcatenar(FILE * dest);
   @returns Retorna el si se logró (1) hacer la operación o no (0)
 
 */
-int desempaquetar(){
-    FILE * archivo = fopen("respaldo.dat", "r");
+void desempaquetar(char * filename){
+    FILE * archivo = fopen(filename, "r");
+    int num_files=0;
     if (archivo != NULL) {
-        desconcatenar(archivo);
-        desconcatenar(archivo);
-        desconcatenar(archivo);
+        fscanf(archivo,"%d\n",&num_files);
+        for (int i = 0; i < num_files; i++) {
+            desconcatenar(archivo);
+        }
         fclose(archivo);
     } else {
-        return 0;
+        fprintf(stderr,"%s\n", "No se pudo abrir el respaldo");
+        exit(EXIT_FAILURE);
     }
 
-    return 1;
+    exit(EXIT_SUCCESS);
 }
 
 /******************************************************************************/
@@ -48,35 +53,25 @@ int desempaquetar(){
   @returns Retorna el si se logró (1) hacer todas las operaciones o no (0)
 
 */
-int empaquetar(char filename[15],char filename1[15],char filename2[15]) {
+void empaquetar(char ** filename, int num_files) {
     int hecho = 1;
-    FILE * archivo = fopen("respaldo.dat", "w+");
+    FILE * fd_salida;
+    FILE * respaldo = fopen("respaldo.cat", "w+");
+    int ca = num_files - 2;
 
-    FILE * fd = fopen(filename, "r");
-    if (fd != NULL) {
-        concatenar(filename, fd, archivo);
-        fclose(fd);
-    } else {
-        hecho = 0;
+    fprintf(respaldo, "%d\n", ca);
+
+    for (int i = 2; i < num_files; i++) {
+        fd_salida = fopen(filename[i], "r");
+        if (fd_salida != NULL) {
+            concatenar(filename[i], fd_salida, respaldo);
+            fclose(fd_salida);
+        } else {
+            printf("%s %s\n", "No se pudo concatenar el archivo: ", filename[i]);
+            exit(EXIT_FAILURE);
+        }
     }
-
-    fd = fopen(filename1, "r");
-    if (fd != NULL) {
-        concatenar(filename1, fd, archivo);
-        fclose(fd);
-    } else {
-        hecho = 0;
-    }
-
-    fd = fopen(filename2, "r");
-    if (fd != NULL) {
-        concatenar(filename2, fd, archivo);
-        fclose(fd);
-    } else {
-        hecho = 0;
-    }
-
-    return hecho;
+    exit(EXIT_SUCCESS);
 }
 
 /******************************************************************************/
@@ -103,13 +98,13 @@ int concatenar(char filename[15], FILE * source,FILE * dest){
 
     fprintf(dest,"%d\n",tam);
 
-    char dat[4];
+    char dat[BUFFER_SIZE];
     int seguir = 0;
     while (seguir<tam) {
-        fread(&dat,sizeof(char),1,source);
-        fwrite(&dat,sizeof(char),1,dest);
+        fread(&dat,sizeof(char),BUFFER_SIZE,source);
+        fwrite(&dat,sizeof(char),BUFFER_SIZE,dest);
         usleep(1);
-        seguir++;
+        seguir = seguir + BUFFER_SIZE;
     }
 
     fprintf(dest,"\n");
@@ -132,24 +127,23 @@ int concatenar(char filename[15], FILE * source,FILE * dest){
 */
 int desconcatenar(FILE * source){
     int tam;
-    char filename[15];
+    char filename[NAME_LEN];
     FILE * dest;
-    char dat;
+    char dat[BUFFER_SIZE];
 
     fscanf(source, "%s\n%d\n", filename,&tam);
+
     dest = fopen(filename,"w+");
     if (dest == NULL) {
         printf("%s\n", "no se pudo abrir");
-        exit(0);
+        exit(EXIT_FAILURE);
     }
     int seguir = 0;
-    fread(&dat,sizeof(char),1,source);
-
     while (seguir < tam) {
-        fwrite(&dat,sizeof(char),1,dest);
-        fread(&dat,sizeof(char),1,source);
+        fread(dat,sizeof(char),BUFFER_SIZE,source);
+        fwrite(dat,sizeof(char),BUFFER_SIZE,dest);
         usleep(1);
-        seguir ++;
+        seguir = seguir + BUFFER_SIZE;
     }
     fclose(dest);
 
