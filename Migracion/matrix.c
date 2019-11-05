@@ -215,8 +215,6 @@ int main(void) {
             break;
         case 3: goto savePoint3;
             break;
-        default:
-            printf("%s caso %d","no entra pa",caso);
         }
 
     }//si no existe no hace falta un else, va directo a ejecutar las lineas que le siguen, en caso de que si existia ya salto a donde queria
