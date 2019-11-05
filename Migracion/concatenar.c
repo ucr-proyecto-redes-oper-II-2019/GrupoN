@@ -47,7 +47,6 @@ int seleccionar(int argc, char ** argv){
         if (strcmp(argv[1],CONCA)==0) {
             if (argc >= 3) {
                 return 0;
-                empaquetar(argv, argc);
             }
         }
         if (strcmp(argv[1],DESCONCA)==0) {
@@ -88,3 +87,4 @@ int main(int argc, char const *argv[]) {
     }
     return 0;
 }
+
