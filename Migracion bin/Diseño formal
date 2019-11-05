@@ -1,0 +1,23 @@
+Lógica de guardado
+Habrá una bandera que será igual a 1 cuando se haya interrumpido el proceso. Dentro de las iteraciones de cada uno de los fors y posteriormente a la llamada del método verify(), habrá una condición que revisa si la bandera está encendida, si lo está se escribirán todas las variables locales en un archivo. Asimismo, se le asignará una etiqueta a los lugares en donde se podrá retomar la ejecución después de que el proceso haya sido interrumpido, serán 3 “savePoints” (dentro de los fors y después de verify()). Esta etiqueta será representada con un número que se almacenará también como parte del archivo con la información temporal, cuando este sea leído para la reanudación de la ejecución se irá a la etiqueta (savePoint) asociada al número.
+
+Variables a guardar: dim, n, i, j, iters, totalprod, matriz A, matriz B, matriz I, matriz Temp, det, sdet, c.
+Función handler (captura la señal del Ctrl C)
+Cuando se lea esta señal, se prenderá una bandera que indica que ha ocurrido una interrupción.
+Casos
+Este programa se dividirá en dos casos: la primera vez que se ejecute el programa y cuando se necesite retomar de corridas previas. El caso en el que se encuentre dependerá de si el archivo para reanudar ya existe. Si existe significa que ya hubo uno ejecución anterior y sino se toma como si fuera la primera vez.
+Caso 1: primera iteración
+Se inicializan todas las variables con los valores que se leen del archivo matrices.dat o con los valores definidos por el programa original, también se creará el archivo para reanudar.
+Caso 2: reanudar 
+Todas las variables serán inicializadas con los datos que se encuentran en el archivo de reanudar y, posterior a la inicialización, se saltará a algún lugar dentro del ciclo que haya sido marcado con una etiqueta (también indicado en el archivo de reanudar). El entero leído determinará a cuál etiqueta saltar, esto será implementado con un switch que divida los casos de los posibles valores del entero leído y ejecute un goto a donde corresponda.
+
+
+Función para concatenar:
+Información adicional: cantidad de archivos a concatenar, tamaño y nombre con extensión de cada uno de los archivos. 
+Después de crear el archivo principal, escribe la información adicional de uno de los archivos y posteriormente escribe los datos de dicho archivo. Lo mismo ocurre con los siguientes archivos.
+
+Función para extraer:
+Crea la cantidad de archivos indicados, cada uno del tamaño y extensión especificada.
+Lee los primeros datos (información adicional) del archivo para saber sus detalles (nombre, tamaño, extensión) y copia los datos correspondientes al archivo que se está extrayendo.
+Ejecuta el ejecutable extraído.  
+

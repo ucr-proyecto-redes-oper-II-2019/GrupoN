@@ -1,0 +1,12 @@
+Iteracion 115 verificada OK: productos = 4, 	totalprod = 742
+Iteracion 116 verificada OK: productos = 8, 	totalprod = 750
+Iteracion 117 verificada OK: productos = 2, 	totalprod = 752
+Iteracion 118 verificada OK: productos = 8, 	totalprod = 760
+Iteracion 119 verificada OK: productos = 10, 	totalprod = 770
+Iteracion 120 verificada OK: productos = 8, 	totalprod = 778
+Iteracion 121 verificada OK: productos = 8, 	totalprod = 786
+Iteracion 122 verificada OK: productos = 4, 	totalprod = 790
+Iteracion 123 verificada OK: productos = 6, 	totalprod = 796
+Iteracion 124 verificada OK: productos = 10, 	totalprod = 806
+Iteracion 125 verificada OK: productos = 8, 	totalprod = 814
+Iteracion 126 verificada OK: productos = 12, 	totalprod = 826
