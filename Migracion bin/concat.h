@@ -7,12 +7,22 @@
 #include "stdio.h"
 #include <unistd.h>
 #include <stdlib.h>
-#define BUFFER_SIZE 1
-#define NAME_LEN 100
+#define BUFFER_SIZE 2*1024*1024
+#define NAME_LEN 64
 
 
 int concatenar(char filename[15], FILE * source,FILE * dest);
-int desconcatenar(FILE * dest);
+int desconcatenar(FILE * dest, int n_arch);
+void extraer(FILE * source, FILE * dest, int tam);
+void rellenar_comando(char * comando, char * filename){
+    char * ch= "chmod +x ";
+    for (int i = 0; i < 9; i++) {
+        comando[i] = ch[i];
+    }
+    for (int i = 9; i < 72; i++) {
+        comando[i]=filename[i-9];
+    }
+}
 
 
 /******************************************************************************/
@@ -25,12 +35,12 @@ int desconcatenar(FILE * dest);
 
 */
 void desempaquetar(char * filename){
-    FILE * archivo = fopen(filename, "r");
+    FILE * archivo = fopen(filename, "rb");
     int num_files=0;
     if (archivo != NULL) {
-        fscanf(archivo,"%d\n",&num_files);
+        fread(&num_files,sizeof(int),1, archivo);
         for (int i = 0; i < num_files; i++) {
-            desconcatenar(archivo);
+            desconcatenar(archivo,i);
         }
         fclose(archivo);
     } else {
@@ -57,15 +67,14 @@ void desempaquetar(char * filename){
 
 */
 void empaquetar(char ** filename, int num_files) {
-    int hecho = 1;
     FILE * fd_salida;
-    FILE * respaldo = fopen("respaldo.cat", "w+");
+    FILE * respaldo = fopen("respaldo.bin", "wb+");
     int ca = num_files - 2;
 
-    fprintf(respaldo, "%d\n", ca);
+    fwrite(&ca,sizeof(int),1,respaldo);
 
     for (int i = 2; i < num_files; i++) {
-        fd_salida = fopen(filename[i], "r");
+        fd_salida = fopen(filename[i], "rb");
         if (fd_salida != NULL) {
             concatenar(filename[i], fd_salida, respaldo);
             fclose(fd_salida);
@@ -90,27 +99,20 @@ void empaquetar(char ** filename, int num_files) {
   @returns Retorna el si se logró (1) hacer todas las operaciones o no (0)
 
 */
-int concatenar(char filename[15], FILE * source,FILE * dest){
+int concatenar(char filename[NAME_LEN], FILE * source,FILE * dest){
     int tam;
 
-    fprintf(dest, "%s\n", filename);
+    fwrite(filename, sizeof(char), NAME_LEN,dest);
 
     fseek(source,0,SEEK_END);
     tam=ftell(source);
     fseek(source,0,SEEK_SET);
 
-    fprintf(dest,"%d\n",tam);
+    fwrite(&tam,sizeof(int),1,dest);
 
     char dat[BUFFER_SIZE];
-    int seguir = 0;
-    while (seguir<tam) {
-        fread(&dat,sizeof(char),BUFFER_SIZE,source);
-        fwrite(&dat,sizeof(char),BUFFER_SIZE,dest);
-        usleep(1);
-        seguir = seguir + BUFFER_SIZE;
-    }
-
-    fprintf(dest,"\n");
+    extraer(source, dest, tam);
+    printf("Archivo: %s\t\t Cantidad de bytes:%d\n", filename, tam);
 
     return 0;
 }
@@ -128,27 +130,54 @@ int concatenar(char filename[15], FILE * source,FILE * dest){
   @returns Retorna el si se logró (1) hacer todas las operaciones o no (0)
 
 */
-int desconcatenar(FILE * source){
+int desconcatenar(FILE * source, int n_arch){
     int tam;
     char filename[NAME_LEN];
     FILE * dest;
-    char dat[BUFFER_SIZE];
 
-    fscanf(source, "%s\n%d\n", filename,&tam);
-
-    dest = fopen(filename,"w+");
+    fread(filename,sizeof(char),NAME_LEN,source);
+    fread(&tam,sizeof(int),1,source);
+    printf("%s\n", filename);
+    dest = fopen(filename,"wb+");
     if (dest == NULL) {
         printf("%s\n", "no se pudo abrir");
         exit(EXIT_FAILURE);
     }
-    int seguir = 0;
-    while (seguir < tam) {
-        fread(dat,sizeof(char),BUFFER_SIZE,source);
-        fwrite(dat,sizeof(char),BUFFER_SIZE,dest);
-        usleep(1);
-        seguir = seguir + BUFFER_SIZE;
-    }
+    extraer(source, dest, tam);
+    printf("Archivo: %s\t Cantidad de bytes:%d\n", filename, tam);
     fclose(dest);
+    if (n_arch == 0) {
+        char comando[72];
+        rellenar_comando(comando,filename);
+        system(comando);
+    }
 
     return 0;
+}
+
+/******************************************************************************/
+/**
+  @brief extraer: extrae la información de la fuente y en bloques de BUFFER_SIZE
+  bytes la va ingresando al destino.
+
+  @param source: descriptor de archivo del fuente.
+  @param dest: descriptor de archivo del destino.
+  @param tam: tamaño total a extraer del fuente e insertar al destino.
+
+*/
+void extraer(FILE * source, FILE * dest, int tam){
+    char dat[BUFFER_SIZE];
+    int seguir = 0;
+    int extraer = 0;
+    while (seguir < tam) {
+        if ((seguir + BUFFER_SIZE) < tam) {
+            extraer = BUFFER_SIZE;
+        } else {
+            extraer = tam - seguir;
+        }
+        fread(dat,sizeof(char),extraer,source);
+        fwrite(dat,sizeof(char),extraer,dest);
+        usleep(1);
+        seguir += extraer;
+    }
 }
