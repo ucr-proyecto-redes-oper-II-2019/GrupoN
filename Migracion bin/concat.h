@@ -68,12 +68,12 @@ void desempaquetar(char * filename){
 */
 void empaquetar(char ** filename, int num_files) {
     FILE * fd_salida;
-    FILE * respaldo = fopen("respaldo.bin", "wb+");
-    int ca = num_files - 2;
+    FILE * respaldo = fopen(filename[2], "wb+");
+    int ca = num_files - 3;
 
     fwrite(&ca,sizeof(int),1,respaldo);
 
-    for (int i = 2; i < num_files; i++) {
+    for (int i = 3; i < num_files; i++) {
         fd_salida = fopen(filename[i], "rb");
         if (fd_salida != NULL) {
             concatenar(filename[i], fd_salida, respaldo);
@@ -137,7 +137,6 @@ int desconcatenar(FILE * source, int n_arch){
 
     fread(filename,sizeof(char),NAME_LEN,source);
     fread(&tam,sizeof(int),1,source);
-    printf("%s\n", filename);
     dest = fopen(filename,"wb+");
     if (dest == NULL) {
         printf("%s\n", "no se pudo abrir");

@@ -1,0 +1,24 @@
+Modo de empleo: ejecutable [OPCIÓN]... [FICHERO]...
+
+Sin FICHERO da una alerta de error y aconseja presionar ayuda.
+
+Las opciones son:
+
+    -c [archivo1.extension archivo2.extension ... ]:
+        Concatena los archivos señalados, el primer archivo
+        ingresado se le otorgará permisos de ejecución a la
+        hora de desconcatenarlo.
+
+    -d [archivo_concatenado]:
+        Desconcatena los archivos integrados en "archivo_concatenado"
+
+    -h:
+        Despliega un cuadro de ayuda.
+
+Ejemplos:
+
+    ./ejecutable -c A B C   Concatena los archivos A, B y C en un archivo
+                            respaldo.bin.
+
+    ./ejecutable -d A       Desconcatena el archivo A y concede permisos
+                            de ejecución al primer archivo desconcatenado.

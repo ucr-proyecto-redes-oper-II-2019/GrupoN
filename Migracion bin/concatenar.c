@@ -17,17 +17,7 @@
   @brief print_help: Despliega un cuadro de ayuda.
 */
 void print_help(){
-    printf("\n%s\n", "Las opciones son:");
-    printf("\n\t%s\n\t\t%s\n", "-c [archivo1.extension archivo2.extension ... ]: ",
-            "Concatena los archivos señalados");
-    printf("\n\t%s\n\t\t%s\n", "-d [archivo_concatenado]: ",
-            "Desconcatena los archivos integrados en archivo_concatenado.");
-    printf("\n\t%s\n\t\t%s\n", "-h: ",
-            "Despliega un cuadro de ayuda.");
-    printf("\n\t%s\n\t\t%s\n\t\t%s\n", "ATENCIÓN: ",
-            "Si lo que se desea concatenar es un archivo  ejecutable se le deberán dar ",
-            "los permisos de ejecución luego con = chmod +x ejecutable.");
-
+    system("cat ayuda.txt");
     exit(EXIT_SUCCESS);
 }
 
@@ -87,4 +77,3 @@ int main(int argc, char const *argv[]) {
     }
     return 0;
 }
-
