@@ -195,19 +195,7 @@ int main(void) {
     if (signal(SIGINT, sig_handler) == SIG_ERR)
         printf("\ncan't catch SIGINT\n");
 
-/* --- Instrucciones ---*/
-    fdata = fopen("matrices.dat", "r");
-    if( fdata == NULL ) {
-        perror("Error opening matrices.dat: ");
-        return(-1);
-    }
 
-    fout  = fopen("trace.txt", "w");
-    if( fout == NULL ) {
-        perror("Error opening trace.txt: ");
-        return(-1);
-    }
-    fclose(fout);
 
     //ARCHIVO PARA REANUDAR
     //FILE *fptr;
@@ -236,6 +224,20 @@ int main(void) {
         }
 
     }//si no existe no hace falta un else, va directo a ejecutar las lineas que le siguen, en caso de que si existia ya salto a donde queria
+
+/* --- Instrucciones ---*/
+    fdata = fopen("matrices.dat", "r");
+    if( fdata == NULL ) {
+        perror("Error opening matrices.dat: ");
+        return(-1);
+    }
+
+    fout  = fopen("trace.txt", "w");
+    if( fout == NULL ) {
+        perror("Error opening trace.txt: ");
+        return(-1);
+    }
+    fclose(fout);
 
     //se abre de nuevo con permisos de escritura y lectura pero esta vez crea el archivo
     fptr = fopen("continue.dat","w+");
