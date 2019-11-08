@@ -29,7 +29,7 @@ void print_help(){
   @param argc: cantidad de argumentos.
   @param argv: conjunto de argumentos.
 
-  @returns Retorna 0 para concatenar, 1 para desconcatenar, o despliega la ayuda.
+  @returns Retorna 0 para concatenar, 1 para desconcatenar, 2 para la ayuda.
 
 */
 int seleccionar(int argc, char ** argv){
@@ -46,12 +46,11 @@ int seleccionar(int argc, char ** argv){
         }
         if (strcmp(argv[1],HELP)==0) {
             if (argc == 2) {
-                print_help();
+                return 2;
             }
         }
     }
-    printf("%s\n", "ERROR DE INGRESO = ingrese \"-h\" para ayuda.");
-    exit(EXIT_FAILURE);
+    return 3;
 }
 
 /******************************************************************************/
@@ -73,6 +72,13 @@ int main(int argc, char const *argv[]) {
             break;
         case 1:
             desempaquetar(arch[2]);
+            break;
+        case 2:
+            print_help();
+            break;
+        case 3:
+            printf("%s\n", "ERROR DE INGRESO = ingrese \"-h\" para ayuda.");
+            exit(EXIT_FAILURE);
             break;
     }
     return 0;
