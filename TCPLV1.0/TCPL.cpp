@@ -1,4 +1,4 @@
-#include "tcplite.h"
+#include "TCPL.h"
 
 TCPLite::TCPLite(int tam_bolsas, int puerto_para_recibir){
   bolsa_send = new Bolsa(tam_bolsas);
@@ -8,7 +8,8 @@ TCPLite::TCPLite(int tam_bolsas, int puerto_para_recibir){
     exit(EXIT_FAILURE);
   }
   memset(&servaddr, 0, sizeof(servaddr));
-  memset(&cliaddr,0 , sizeof(cliaddr));
+  memset(&cliaddr_send,0 , sizeof(cliaddr_send));
+  memset(&cliaddr_recv,0 , sizeof(cliaddr_recv));
   cliaddr_send.sin_family = AF_INET;
   cliaddr_recv.sin_family = AF_INET;
   servaddr.sin_family = AF_INET;
@@ -25,18 +26,18 @@ int TCPLite::send_timeout(){
   while(1){
     inicio = clock();
     while(1){
-      time_spent = (double)(clock() - begin) / CLOCKS_PER_SEC;
-      if(time_spent >= 1.5){
+      tiempo = (double)(clock() - inicio) / CLOCKS_PER_SEC;
+      if(tiempo >= 1.5){
         break;
       }
     }
-    for(int i = 0; i < bolsa_send.get_size(); i++){
-      request req = bolsa_send.get_paquete(i);
-      cliaddr_send.sin_port = htons(req->port);
-      cliaddr_send.sin_addr.s_addr = inet_addr(req->IP);
-      sendto(sockfd,(const char *)req->paquete, REQMAXSIZE, MSG_CONFIRM, (const struct sockaddr *) &cliaddr_send, sizeof(cliaddr_send)); //no se si se manda asi el ack, hay que revisar
-      --bolsa_send.get_paquete(i).ttl;
-      bola_send.borrar_por_ttl(i);
+    for(int i = 0; i < bolsa_send->get_size(); i++){
+      request req = bolsa_send->get_paquete(i);
+      cliaddr_send.sin_port = htons(req.port);
+      cliaddr_send.sin_addr.s_addr = inet_addr(req.IP);
+      sendto(sockfd,(const char *)req.paquete, REQMAXSIZE, MSG_CONFIRM, (const struct sockaddr *) &cliaddr_send, sizeof(cliaddr_send)); //no se si se manda asi el ack, hay que revisar
+      //bolsa_send->get_paquete(i).ttl--;
+      bolsa_send->borrar_por_ttl(i);
     }
   }
   return 0;
@@ -63,14 +64,14 @@ int TCPLite::send(char IP[15], int port, char paquete[REQMAXSIZE]){
 int TCPLite::receive(){
   socklen_t len;
   char paquete[REQMAXSIZE];
-  recvfrom(sockfd, (char *)paquete, PACKAGE_SIZE, MSG_WAITALL,(struct sockaddr *) &cliaddr_recv, &len);
+  recvfrom(sockfd, (char *)paquete, REQMAXSIZE, MSG_WAITALL,(struct sockaddr *) &cliaddr_recv, &len);
   request r;
   r.IP = inet_ntoa(cliaddr_recv.sin_addr);
   r.port = ntohs(cliaddr_recv.sin_port);
   for(int i = 0; i < REQMAXSIZE;i++){
       r.paquete[i] = paquete[i];
   }
-  int insertado = bolsa_receive.insertar(inet_ntoa(cliaddr_recv.sin_addr),ntohs(cliaddr_recv.sin_port),paquete, 0);
+  int insertado = bolsa_receive->insertar(inet_ntoa(cliaddr_recv.sin_addr),ntohs(cliaddr_recv.sin_port),paquete, 0);
   if(paquete[0] == '\0'){
       send_ACK(inet_ntoa(cliaddr_recv.sin_addr),ntohs(cliaddr_recv.sin_port),paquete);
   }else{
