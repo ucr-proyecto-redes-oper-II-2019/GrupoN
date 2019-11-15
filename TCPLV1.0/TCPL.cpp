@@ -31,10 +31,12 @@ int TCPLite::send_timeout(){
       }
     }
     for(int i = 0; i < bolsa_send.get_size(); i++){
-      request req = get_paquete(i);
+      request req = bolsa_send.get_paquete(i);
       cliaddr_send.sin_port = htons(req->port);
       cliaddr_send.sin_addr.s_addr = inet_addr(req->IP);
-      sendto(sockfd,(const char *)req->paquete, REQMAXSIZE, MSG_CONFIRM, (const struct sockaddr *) &cliaddr_send, sizeof(cliaddr_send)); //no se si se manda as el ack, hay que revisar
+      sendto(sockfd,(const char *)req->paquete, REQMAXSIZE, MSG_CONFIRM, (const struct sockaddr *) &cliaddr_send, sizeof(cliaddr_send)); //no se si se manda asi el ack, hay que revisar
+      --bolsa_send.get_paquete(i).ttl;
+      bola_send.borrar_por_ttl(i);
     }
   }
   return 0;
@@ -48,12 +50,12 @@ int TCPLite::send_ACK(char IP[15], int port, char paquete[REQMAXSIZE]){
   sendto(sockfd,(const char *) paquete, REQMAXSIZE, MSG_CONFIRM, (const struct sockaddr *) &cliaddr_temp, sizeof(cliaddr_temp));
   return 0;
 }
-int TCPLite::check_rcvd(){
+/*int TCPLite::check_rcvd(){
   for(int i = 0; i < bolsa_receive->get_size();i++){
     request req = get_paquete(i);
     //if(req->paquete, tiene que revisar si el paquete es ack o no
   }
-}
+}*/
 int TCPLite::send(char IP[15], int port, char paquete[REQMAXSIZE]){
   return bolsa_send->insertar(IP,port,paquete,1);
 }
@@ -62,7 +64,17 @@ int TCPLite::receive(){
   socklen_t len;
   char paquete[REQMAXSIZE];
   recvfrom(sockfd, (char *)paquete, PACKAGE_SIZE, MSG_WAITALL,(struct sockaddr *) &cliaddr_recv, &len);
+  request r;
+  r.IP = inet_ntoa(cliaddr_recv.sin_addr);
+  r.port = ntohs(cliaddr_recv.sin_port);
+  for(int i = 0; i < REQMAXSIZE;i++){
+      r.paquete[i] = paquete[i];
+  }
   int insertado = bolsa_receive.insertar(inet_ntoa(cliaddr_recv.sin_addr),ntohs(cliaddr_recv.sin_port),paquete, 0);
-  send_ACK(inet_ntoa(cliaddr_recv.sin_addr),ntohs(cliaddr_recv.sin_port),paquete);
+  if(paquete[0] == '\0'){
+      send_ACK(inet_ntoa(cliaddr_recv.sin_addr),ntohs(cliaddr_recv.sin_port),paquete);
+  }else{
+      bolsa_receive->borrar_confirmado(r);
+  }
   return insertado;
 }
