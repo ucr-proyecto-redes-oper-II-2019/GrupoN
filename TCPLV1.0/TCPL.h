@@ -12,9 +12,9 @@ private:
   struct sockaddr_in servaddr, cliaddr_send,cliaddr_recv;
   Bolsa * bolsa_send, * bolsa_receive;
 public:
-    TCPLite(int tam_bolsas);
+    TCPLite(int tam_bolsas,int puerto_para_recibir);
     ~TCPLite();
-    int timeout_send();
+    int send_timeout();
     int send_ACK(char IP[15], int port, char paquete[REQMAXSIZE]);
     int check_rcvd();
     int send(char IP[15], int port, char paquete[REQMAXSIZE]);
