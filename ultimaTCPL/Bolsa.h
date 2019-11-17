@@ -28,6 +28,7 @@ private:
     void borrar_por_ttl(int);
     int get_size();
     request get_paquete(int indice);
+    void borrar_recibido(int i);
 
 };
 #endif

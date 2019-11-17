@@ -82,9 +82,33 @@ int TCPLite::receive(){
   }
   int insertado = bolsa_receive->insertar(inet_ntoa(cliaddr_recv.sin_addr),ntohs(cliaddr_recv.sin_port),paquete, 0);
   if(paquete[0] == '\0'){
+    for (int i = 0; i < 5; ++i) {
       send_ACK(inet_ntoa(cliaddr_recv.sin_addr),ntohs(cliaddr_recv.sin_port),paquete);
+    }
+
   }else{
-      bolsa_receive->borrar_confirmado(r);
+      bolsa_send->borrar_confirmado(r);
   }
   return insertado;
+}
+
+
+void TCPLite::copy(char * dest, char * vector,int size){
+	for (int i = 0; i < size; ++i){
+		dest[i] = vector[i];
+	}
+
+}
+
+//Lo saca de la volsa recv y lo borra
+int TCPLite::getPaqueteRcv(int i, char * paquete){
+  //char paquete[REQMAXSIZE-5];
+  for (int i = 0; i < bolsa_receive->get_size(); i++) {
+    if(bolsa_receive->get_paquete(i).paquete[0] == '\0' ){
+      copy(paquete,&(bolsa_receive->get_paquete(i).paquete[5]),REQMAXSIZE-5);
+      bolsa_receive->borrar_recibido(i);
+      return 1;
+    }
+  }
+  return 0;//todos son ack o no hay nada en bolsa rcv
 }

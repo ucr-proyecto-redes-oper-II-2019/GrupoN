@@ -83,6 +83,11 @@ void Bolsa::borrar_por_ttl(int i){
 
 }
 
+void Bolsa::borrar_recibido(int i){
+	bolsa.erase(bolsa.begin()+i);
+
+}
+
 int Bolsa::get_size(){
 	return bolsa.size();
 }
