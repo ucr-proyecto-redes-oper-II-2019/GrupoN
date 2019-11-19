@@ -21,7 +21,7 @@ public:
     int check_rcvd();
     int send(char IP[15], int port, char paquete[REQMAXSIZE]);
     int receive();
-    int getPaqueteRcv(int,request);
+    int getPaqueteRcv(int,request*);
     int getBolsaSize();
 
 };

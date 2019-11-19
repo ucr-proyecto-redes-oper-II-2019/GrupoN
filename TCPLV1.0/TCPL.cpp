@@ -115,7 +115,7 @@ int TCPLite::getPaqueteRcv(int i, request * req){
   return 0;//todos son ack o no hay nada en bolsa rcv
 }
 
-int Bolsa::getBolsaSize(){ 
-  return bolsa_receive.size();
+int TCPLite::getBolsaSize(){ 
+  return bolsa_receive->get_size();
 
 }
