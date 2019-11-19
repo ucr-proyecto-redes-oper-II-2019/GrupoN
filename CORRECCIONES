@@ -1,0 +1,5 @@
+COSAS TENTATIVAS SI NO RIP:
+  nombre del archivo.
+  arreglar el fread(sizeof(char), CANTIDAD_DE_CHAR)
+  int cantidad_recibida = recivefrom(buff_recibido);
+  fwrite(sizeof(char), cantidad_recibida);
