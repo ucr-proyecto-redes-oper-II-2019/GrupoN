@@ -23,6 +23,7 @@ TCPLite::~TCPLite(){
 int TCPLite::send_timeout(){
   clock_t inicio;
   double tiempo;
+  int numSec;
   while(1){
     inicio = clock();
     while(1){
@@ -58,6 +59,14 @@ int TCPLite::send_ACK(char IP[15], int port, char paquete[REQMAXSIZE]){
   }
 }*/
 int TCPLite::send(char IP[15], int port, char paquete[REQMAXSIZE]){
+  int sn = random();
+  char * p;
+	p = (char *)&sn;
+	paquete[0] = '\0';
+	paquete[1] = p[3];
+	paquete[2] = p[2];
+	paquete[3] = p[1];
+  paquete[4] = p[0];
   return bolsa_send->insertar(IP,port,paquete,1);
 }
 
@@ -73,9 +82,40 @@ int TCPLite::receive(){
   }
   int insertado = bolsa_receive->insertar(inet_ntoa(cliaddr_recv.sin_addr),ntohs(cliaddr_recv.sin_port),paquete, 0);
   if(paquete[0] == '\0'){
+    for (int i = 0; i < 5; ++i) {
       send_ACK(inet_ntoa(cliaddr_recv.sin_addr),ntohs(cliaddr_recv.sin_port),paquete);
+    }
+
   }else{
-      bolsa_receive->borrar_confirmado(r);
+      bolsa_send->borrar_confirmado(r);
   }
   return insertado;
+}
+
+
+void TCPLite::copy(char * dest, char * vector,int size){
+	for (int i = 0; i < size; ++i){
+		dest[i] = vector[i];
+	}
+
+}
+
+//Lo saca de la volsa recv y lo borra
+int TCPLite::getPaqueteRcv(int i, request * req){
+  //char paquete[REQMAXSIZE-5];
+  for (int i = 0; i < bolsa_receive->get_size(); i++) {
+    if(bolsa_receive->get_paquete(i).paquete[0] == '\0' ){
+      copy(req->paquete,&(bolsa_receive->get_paquete(i).paquete[5]),REQMAXSIZE-5);
+      req->port = bolsa_receive->get_paquete(i).port;
+      copy(req->IP,bolsa_receive->get_paquete(i).IP,15);
+      bolsa_receive->borrar_recibido(i);
+      return 1;
+    }
+  }
+  return 0;//todos son ack o no hay nada en bolsa rcv
+}
+
+int Bolsa::getBolsaSize(){ 
+  return bolsa_receive.size();
+
 }
