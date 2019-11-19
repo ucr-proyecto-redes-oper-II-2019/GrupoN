@@ -2,6 +2,8 @@ QT -= gui
 
 CONFIG += c++11 console
 CONFIG -= app_bundle
+QMAKE_CXXFLAGS += -fopenmp
+LIBS += -fopenmp
 
 # The following define makes your compiler emit warnings if you use
 # any Qt feature that has been marked deprecated (the exact warnings
@@ -19,7 +21,8 @@ SOURCES += \
         ../GrupoN/TCPLV1.0/Nodo_naranja.cpp \
         ../GrupoN/TCPLV1.0/TCPL.cpp \
         ../GrupoN/TCPLV1.0/metodos_nodos_naranja.cpp \
-        main.cpp
+        main.cpp \
+        n_naranja.cpp
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
@@ -28,7 +31,8 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 HEADERS += \
     ../GrupoN/TCPLV1.0/Bolsa.h \
-    ../GrupoN/TCPLV1.0/TCPL.h
+    ../GrupoN/TCPLV1.0/TCPL.h \
+    n_naranja.h
 
 DISTFILES += \
     ../GrupoN/TCPLV1.0/readme

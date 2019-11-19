@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <vector>
 #include <omp.h>
+#include "n_naranja.h"
 
 #define PACKETSIZE 1030
 //SOLICITUDES
@@ -28,7 +29,7 @@ int main(){
 	vector<request> cola_de_Disconnect;
 	vector<request> cola_de_Remove;
 	vector<request> cola_de_ConfirmPos;
-	Naranja naranja();
+    N_naranja naranja;
 	char paquete[PACKETSIZE];
 	int port;
 	char * IP;
@@ -37,7 +38,7 @@ int main(){
 	while(1){
 
 		//4 hilos para manejar tcpl y los otros 4 son para cada solicitud 
-	#pragma omp parallel num_threads(7) shared(paquete,tcpl,port,IP,bandera, cola_de_Connect,cola_de_RequestPos, cola_de_Disconnect,cola_de_Remove,cola_de_ConfirmPos)
+    #pragma omp parallel num_threads(7) shared(paquete,tcpl,port,IP,bandera, cola_de_Connect,cola_de_RequestPos, cola_de_Disconnect,cola_de_Remove,cola_de_ConfirmPos)
 		{
 			int hilo = omp_get_thread_num();
 
@@ -52,7 +53,7 @@ int main(){
 					{	
 						request req;
 						bandera = tcpl.getPaqueteRcv(0, &req);
-						int * solicitud = (int*)(&paquete[6]);
+                        int * solicitud = reinterpret_cast<int*>(&paquete[6]);
 						
 						switch(*solicitud){
 							case CONNECT: cola_de_Connect.push_back(paquete);

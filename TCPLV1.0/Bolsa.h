@@ -7,6 +7,19 @@
 using namespace std;
 #define REQMAXSIZE 1032
 
+/**
+ * @brief The request struct esta estructura se usa para almacenar cada una de las solicitudes que
+ * llegan al sistema.
+ *
+ * IP: es la dirección de la IP de la fuente o el destino de la solicitud, dependiendo si es una
+ * solicitud recibida o enviada.
+ *
+ * port: número de puerto del cual viene o se dirige la solicitud.
+ *
+ * ttl: cantidad de segundos que la solicitud se encontrará en espera.
+ *
+ * paquete: paquete que se desea transmitir.
+ */
 struct request{
   char * IP;
   int port;
