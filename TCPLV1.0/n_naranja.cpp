@@ -2,6 +2,7 @@
 
 N_naranja::N_naranja(){
     srand(static_cast<unsigned int>(time(nullptr)));
+    esperando_request_pos_ACK = 0;
 }
 
 int N_naranja::revisar_ID(int ID)
@@ -13,7 +14,14 @@ int N_naranja::revisar_ID(int ID)
     }
     return 0;
 }
-
+int N_naranja::borrar_ID(int ID){
+  for(int i = 0; i < vector_nombres_usados.size(); i++){
+      if(vector_nombres_usados.at(i) == ID){
+          vector_nombres_usados.erase(vector_nombres_usados.begin() + i);
+      }
+  }
+  return 0
+}
 int N_naranja::request_pos(char *paquete){
     //se elige el numero de request
     int num_req = rand();
@@ -50,15 +58,54 @@ int N_naranja::request_pos(char *paquete){
     paquete[7] = p[1];
     paquete[8] = p[0];
     ultima_prioridad_asignada = num_prioridad;//para luego responder si ese nombre fue asignado y ver que prioridad gana
-
+    esperando_request_pos_ACK = 1;
     return num_ID;
 }
-
-void N_naranja::request_pos_ACK(char *ACK){
+/*los parametros son el paquete que se debe llenar,el numero de request del request_pos originalmente recibido,
+el ID del request_pos originalmente recibido, la prioridad del request_pos originalmente recibido,*/
+void N_naranja::request_pos_ACK(char *ACK, int num_request,int ID, int num_prioridad){
     //para esta se planea usar ultimo_nombre_asignado y ultima_prioridad_asignada
+    char * r;
+    r = reinterpret_cast<char*>(&num_req);
+    ACK[0] = r[3];
+    ACK[1] = r[2];
+    ACK[2] = r[1];
+    ACK[3] = r[0];
+    if(esperando_request_pos_ACK && ID == ultimo_nombre_asignado){
+      //if(esperando_request_pos_ACK){ //si es un nodo que mando un request_pos a los otros nodos recientemente
+        if(num_prioridad > ultima_prioridad_asignada){
+          int num_respuesta = 1;
+          char * x;
+          x = reinterpret_cast<char*>(&)num_respuesta;
+          ACK[4] = x[1];
+          ACK[5] = x[0];
+          //si la prioridad de la otra persona gano entonces ya no se deberian esperar request_pos_ACK porque se tiene que asignar el ID de nuevo
+          esperando_request_pos_ACK = 0;
+        }else if(num_prioridad < ultima_prioridad_asignada){
+          int num_respuesta = 0;
+          char * x;
+          x = reinterpret_cast<char*>(&)num_respuesta;
+          ACK[4] = x[1];
+          ACK[5] = x[0];
+        }else{//si son iguales
+          //se compara el numero de nodo, hay que ver donde se asigna el numero de nodo
+        }
+    }else{//si el ID no es igual o no se esta esperando ningun request_pos_ACK
+        int num_respuesta = 1;
+        char * x;
+        x = reinterpret_cast<char*>(&)num_respuesta;
+        ACK[4] = x[1]; //revisar
+        ACK[5] = x[0];
+    }
+    int num_tarea = 206;
+    char * t;
+    t = reinterpret_cast<char*>(&num_tarea);
+    paquete[6] = t[0];
+    //el cuerpo va vacio entonces hay que ver que poner para identificarlo como vacio
 }
 
 void N_naranja::confirm_pos(char *paquete, int num_ID){
+    esperando_request_pos_ACK = 0; //si se esta mandando un confirm_pos significa que ya no se esta esperando ningun request_pos_ACK
     int num_req = rand();
     char * r;
     r = reinterpret_cast<char*>(&num_req);
@@ -108,4 +155,63 @@ void N_naranja::confirm_pos_ACK(char *paquete, int num_req, int num_ID){
     paquete[10] = t[0];
 }
 
+void N_naranja::disconnect_ACK(char * ACK, int num_req, int ID){
+  char * r;
+  r = reinterpret_cast<char*>(&num_req);
+  ACK[0] = r[3];
+  ACK[1] = r[2];
+  ACK[2] = r[1];
+  ACK[3] = r[0];
 
+  char * x;
+  x = reinterpret_cast<char*>(&num_ID);
+  ACK[4] = x[1];
+  ACK[5] = x[0];
+
+  int num_tarea = 216;
+  char * t;
+  t = reinterpret_cast<char*>(&num_tarea);
+  paquete[6] = t[0];
+
+  //el cuerpo va vacio entonces hay que ver que poner para identificarlo como vacio
+}
+
+void remove(char * paquete, int num_ID){
+  int num_req = rand();
+  char * r;
+  r = reinterpret_cast<char*>(&num_req);
+  paquete[0] = r[3];
+  paquete[1] = r[2];
+  paquete[2] = r[1];
+  paquete[3] = r[0];
+  char * x;
+  x = reinterpret_cast<char*>(&num_ID);
+  paquete[4] = x[1];
+  paquete[5] = x[0];
+  int num_tarea = 220;
+  char * t;
+  t = reinterpret_cast<char*>(&num_tarea);
+  paquete[6] = t[0];
+  //el cuerpo va vacio entonces hay que ver que poner para identificarlo como vacio
+  borrar_ID(num_ID);
+}
+
+void remove_ACK(char * ACK, int num_ID){
+  int num_req = rand();
+  char * r;
+  r = reinterpret_cast<char*>(&num_req);
+  ACK[0] = r[3];
+  ACK[1] = r[2];
+  ACK[2] = r[1];
+  ACK[3] = r[0];
+  char * x;
+  x = reinterpret_cast<char*>(&num_ID);
+  ACK[4] = x[1];
+  ACK[5] = x[0];
+  int num_tarea = 221;
+  char * t;
+  t = reinterpret_cast<char*>(&num_tarea);
+  ACK[6] = t[0];
+  //el cuerpo va vacio entonces hay que ver que poner para identificarlo como vacio
+  borrar_ID(num_ID);
+}
