@@ -21,12 +21,12 @@ private:
 public:
     N_naranja();
     int request_pos(char * paquete);
-    void request_pos_ACK(char * ACK);
+    void request_pos_ACK(char * ACK,int num_req,int num_ID, int num_prioridad);
     void confirm_pos(char * paquete, int num_ID /*IP y puerto, hay que ver como se pasan de parametro(que tipo usar)*/);
     void confirm_pos_ACK(char * ACK, int num_req, int num_ID);
-    void diconnect_ACK(char * ACK);
-    void remove(char * paquete);
-    void remove_ACK(char * paquete);
+    void disconnect_ACK(char * ACK, int num_req, int num_ID);
+    void remove(char * paquete, int num_ID);
+    void remove_ACK(char * paquete,  int num_ID);
 
 };
 
