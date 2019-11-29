@@ -24,7 +24,7 @@ struct request{
   char  * IP;
   int port;
   int ttl; //segundos
-  char paquete[REQMAXSIZE];
+  char * paquete;
 };
 
 class Bolsa{
