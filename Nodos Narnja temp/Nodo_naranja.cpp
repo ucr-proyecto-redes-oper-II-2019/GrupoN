@@ -80,7 +80,14 @@ int main(){
 						/*
 							revisar si se puede meter a la cola de send (aun hay espacio?) o si se aun no estan instanciados todos los
 							nodos del archivo del grafo (aun se pueden unir verdes?)
-							para esta ultima revision se tiene que tener un contador cada vez que metamos uno y tambien en naranjas una variable
+							para esta ultima revision se tiene que tener un contador cada vez que metamos uno, se actauliza cuando se hace confirm ack
+							en caso de no poder hacerlo envia un NACK
+							en caso de si poder instanciarlo
+							hace un request_pos a todos los vecinos naranjas
+							si algun nodo manda un request_pos_ACK negativo se manda un NACK
+							si todos le confirmaron, se llama a confirm
+							los confirm ACK tambien pueden hacer que se devuelva un NACK
+							si todo esto se logro entonces se hace un connect_ACK 
 
 						*/
 
