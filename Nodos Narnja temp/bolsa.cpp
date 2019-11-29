@@ -18,7 +18,8 @@ int Bolsa::insertar(char * IP, int port, char paquete[REQMAXSIZE], int tipo_bols
     //packet.IP = new char[15];
     packet.IP = IP;
     //1copy(packet.IP,IP,sizeof(IP));
-    copy(packet.paquete, paquete, REQMAXSIZE);
+    //copy(packet.paquete, paquete, REQMAXSIZE);
+    packet.paquete = paquete;
     packet.port = port;
 
     if(tipo_bolsa == 1){
