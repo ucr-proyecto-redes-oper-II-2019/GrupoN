@@ -206,8 +206,8 @@ void N_naranja::remove(char * paquete, int num_ID){
     borrar_ID(num_ID);
 }
 
-void N_naranja::remove_ACK(char * ACK, int num_ID){
-    int num_req = rand();
+void N_naranja::remove_ACK(char * ACK, int num_ID, int num_req){
+
     char * r;
     r = reinterpret_cast<char*>(&num_req);
     ACK[0] = r[3];

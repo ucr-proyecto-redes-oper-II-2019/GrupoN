@@ -52,7 +52,7 @@ public:
     void confirm_pos_ACK(char * ACK, int num_req, int num_ID);
     void disconnect_ACK(char * ACK, int num_req, int num_ID);
     void remove(char * paquete, int num_ID);
-    void remove_ACK(char * paquete,  int num_ID);
+    void remove_ACK(char * ACK, int num_ID, int num_req);
     void connect_ACK(vector<char*> * ACK, int puerto,char * IP, int num_request);
     void fill_header(char * paquete, int num_request, int i_c_r, int tarea_realizar);
     void fill_neighbour(char * paquete, int id, unsigned int ip, unsigned short puerto, int size);

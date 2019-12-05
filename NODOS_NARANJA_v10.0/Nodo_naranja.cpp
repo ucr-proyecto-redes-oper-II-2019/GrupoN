@@ -9,7 +9,7 @@
 #include <bits/stdc++.h>
 #include "n_naranja.h"
 
-#define PACKETSIZE 1030
+#define PACKETSIZE 1015
 //SOLICITUDES
 #define CONNECT 200
 #define REQUEST_POS 205
@@ -61,7 +61,7 @@ int main(){
 	vector<request> cola_de_Remove;
 	vector<request> cola_de_ConfirmPos;
   vector<request> cola_de_ConfirmPosACK;
-  N_naranja naranja("grafo.csv","test.txt","10.0.2.15");
+  N_naranja naranja("grafo.csv","test.txt",(char*)"10.0.2.15");
 	char paquete[PACKETSIZE];
 	int port;
 	char * IP;
@@ -98,10 +98,10 @@ int main(){
 							break;
 							case CONFIRM_POS: cola_de_ConfirmPos.push_back(req);
 							break;
-              case REQUEST_POS_ACK: cola_de_RequestPos.push_back(req);
-              break;
-              case CONFIRM_POS_ACK: cola_de_ConfirmPosACK.push_back(req);
-              break;
+              				case REQUEST_POS_ACK: cola_de_RequestPos.push_back(req);
+              				break;
+              				case CONFIRM_POS_ACK: cola_de_ConfirmPosACK.push_back(req);
+              				break;
 						}
 
 
@@ -111,6 +111,13 @@ int main(){
 				#pragma omp critical(emisor)
 				{
 					for(int i = 0; i < cola_de_Connect.size();++i){
+						char numero_request[4];
+						numero_request[0] = cola_de_RequestPos[i].paquete[3];
+						numero_request[1] = cola_de_RequestPos[i].paquete[2];
+						numero_request[2] = cola_de_RequestPos[i].paquete[1];
+						numero_request[3] = cola_de_RequestPos[i].paquete[0];
+						int * numDeRequest = reinterpret_cast<int*>(numero_request);
+
 						/*
 							revisar si se puede meter a la cola de send (aun hay espacio?) o si se aun no estan instanciados todos los
 							nodos del archivo del grafo (aun se pueden unir verdes?)
@@ -168,32 +175,48 @@ int main(){
                 //se sacan de la cola
               }
             }
-            char* ACK;
+            
+
+            vector<char*> ACK;
 						//int num_ID = cola_de_Connect[i]; ???
             //request reqConnect = cola_de_Connect[i];
-						int num_request = rand();
+						
             //se manda connect ack cuando se reciban todos los confirm_pos_ACK
-						naranja.connect_ACK(ACK,cola_de_Connect[i].port,cola_de_Connect[i].IP,num_request); /*revisar parametros connect ack*/
-						/*for (int j = 0; j < ACK.size(); j++) {
+						naranja.connect_ACK(&ACK,cola_de_Connect[i].port,cola_de_Connect[i].IP,*numDeRequest); /*revisar parametros connect ack*/
+						//porque estaba comentado?
+						for (int j = 0; j < ACK.size(); j++) {
 								tcpl.send(cola_de_Connect[i].IP,cola_de_Connect[i].port,ACK[i]);
-						}*/
-            tcpl.send(cola_de_Connect[i].IP,cola_de_Connect[i].port,ACK);
+						}
+            //tcpl.send(cola_de_Connect[i].IP,cola_de_Connect[i].port,ACK);
 					}
 				}
 			}else if(hilo == 3 && bandera){
 				#pragma omp critical(emisor)
 				{
 					for(int i = 0; i < cola_de_RequestPos.size();++i){
-						//REquest Pos
-						//vector con lista de nodos naranja: publica
-						//tcpl revisa bolsa rcv buscando ACK con # request x
-						//lo marca en lista ->retorna si logro marcarlo (solo lo logra si es la 1era vez)
-						//aumente un contador si lo logra marcar
-						//hace confirm cuando el contador == lista.size
-						/*naranja.request_pos(cola_de_RequestPos[i].paquete);
+						
+						//request_pos_ACK(char * ACK,int num_req,int num_ID, int num_prioridad);
 						char paqueteACK[PACKETSIZE];
-						naranja.request_pos_ACK(paqueteACK);
-						tcpl.send(cola_de_RequestPos[i].IP,cola_de_RequestPos[i].port,paqueteACK);*/
+
+						char num_request[4];
+						num_request[0] = cola_de_RequestPos[i].paquete[3];
+						num_request[1] = cola_de_RequestPos[i].paquete[2];
+						num_request[2] = cola_de_RequestPos[i].paquete[1];
+						num_request[3] = cola_de_RequestPos[i].paquete[0];
+						int * num_req = reinterpret_cast<int*>(num_request);
+
+						char ID[2];
+						ID[0] = cola_de_RequestPos[i].paquete[5];
+						ID[1] = cola_de_RequestPos[i].paquete[4];
+						int * nombre = reinterpret_cast<int*>(ID);	
+
+						char prioridad[2];
+						prioridad[0] = cola_de_RequestPos[i].paquete[8];
+						prioridad[1] = cola_de_RequestPos[i].paquete[7];
+						int * num_prioridad = reinterpret_cast<int*>(prioridad);
+
+						naranja.request_pos_ACK(paqueteACK, *num_req, *nombre, *num_prioridad);
+						tcpl.send(cola_de_RequestPos[i].IP,cola_de_RequestPos[i].port,paqueteACK);
 					}
 
 				}
@@ -203,11 +226,21 @@ int main(){
 				{
 
 					for(int i = 0; i < cola_de_Disconnect.size();++i){
-						/*
-						naranja.disconnect();
+						
 						char paqueteACK[PACKETSIZE];
-						naranja.disconnect_ACK(paqueteACK);
-						tcpl.send(cola_de_Disconnect.IP,cola_de_Disconnect.port,paqueteACK);*/
+						char num_request[4];
+						num_request[0] = cola_de_RequestPos[i].paquete[3];
+						num_request[1] = cola_de_RequestPos[i].paquete[2];
+						num_request[2] = cola_de_RequestPos[i].paquete[1];
+						num_request[3] = cola_de_RequestPos[i].paquete[0];
+						int * num_req = reinterpret_cast<int*>(num_request);
+
+						char ID[2];
+						ID[0] = cola_de_RequestPos[i].paquete[5];
+						ID[1] = cola_de_RequestPos[i].paquete[4];
+						int * nombre = reinterpret_cast<int*>(ID);	
+						naranja.disconnect_ACK(paqueteACK, *num_req,*nombre);
+						tcpl.send(cola_de_Disconnect[i].IP,cola_de_Disconnect[i].port,paqueteACK);
 					}
 
 				}
@@ -217,11 +250,22 @@ int main(){
 				{
 
 					for(int i = 0; i < cola_de_Remove.size();++i){
-						/*
-						naranja.remove();
+					
 						char paqueteACK[PACKETSIZE];
-						naranja.remove_ACK(paqueteACK);
-						tcpl.send(cola_de_Remove.IP,cola_de_Remove.port,paqueteACK);*/
+						char num_request[4];
+						num_request[0] = cola_de_RequestPos[i].paquete[3];
+						num_request[1] = cola_de_RequestPos[i].paquete[2];
+						num_request[2] = cola_de_RequestPos[i].paquete[1];
+						num_request[3] = cola_de_RequestPos[i].paquete[0];
+						int * num_req = reinterpret_cast<int*>(num_request);
+
+						char ID[2];
+						ID[0] = cola_de_RequestPos[i].paquete[5];
+						ID[1] = cola_de_RequestPos[i].paquete[4];
+						int * nombre = reinterpret_cast<int*>(ID);		
+
+						naranja.remove_ACK(paqueteACK,*nombre,*num_req);
+						tcpl.send(cola_de_Remove[i].IP,cola_de_Remove[i].port,paqueteACK);
 					}
 
 				}
@@ -231,10 +275,22 @@ int main(){
 				{
 
 					for(int i = 0; i < cola_de_ConfirmPos.size();++i){
-						/*
+						
 						char paqueteACK[PACKETSIZE];
-						naranja.confirmPos_ACK(paqueteACK);
-						tcpl.send(cola_de_ConfirmPos.IP,cola_de_ConfirmPos.port,paqueteACK);*/
+						char num_request[4];
+						num_request[0] = cola_de_RequestPos[i].paquete[3];
+						num_request[1] = cola_de_RequestPos[i].paquete[2];
+						num_request[2] = cola_de_RequestPos[i].paquete[1];
+						num_request[3] = cola_de_RequestPos[i].paquete[0];
+						int * num_req = reinterpret_cast<int*>(num_request);
+
+						char ID[2];
+						ID[0] = cola_de_RequestPos[i].paquete[5];
+						ID[1] = cola_de_RequestPos[i].paquete[4];
+						int * nombre = reinterpret_cast<int*>(ID);	
+
+						naranja.confirm_pos_ACK(paqueteACK,*num_req,*nombre);
+						tcpl.send(cola_de_ConfirmPos[i].IP,cola_de_ConfirmPos[i].port,paqueteACK);
 					}
 
 				}
