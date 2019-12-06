@@ -12,7 +12,9 @@ N_verde::~N_verde(){
 }
 
 //4B 2B 1B 2B 2B 2B 2B
-void N_verde:: armar_paquete(char * paquete, int num_req, int respuesta, int num_tarea, int num_prioridad){
+void N_verde:: armar_paquete(char * paquete, int num_req, int respuesta, 
+                            int num_tarea, int num_prioridad, int fuente,
+                            int destino, int ttl){
     char * r;
     r = reinterpret_cast<char*>(&num_req);
     paquete[0] = r[3];
@@ -35,6 +37,21 @@ void N_verde:: armar_paquete(char * paquete, int num_req, int respuesta, int num
     paquete[7] = p[1];
     paquete[8] = p[0];
 
+    if(fuente!= -1){
+        char * q;
+        q = reinterpret_cast<char*>(&ttl);
+        paquete[9] = q[1];
+        paquete[10] = q[0];
+        
+        q = reinterpret_cast<char*>(&fuente);
+        paquete[11] = q[1];
+        paquete[12] = q[0];
+
+        q = reinterpret_cast<char*>(&destino);
+        paquete[13] = q[1];
+        paquete[14] = q[0];
+
+    }
 }
 
 
@@ -58,7 +75,7 @@ void N_verde::greet_neighbor(char * paquete){
 	int num_req = rand();
     int num_tarea = 100;
     int respuesta = this->nombre; //ID origen
-    armar_paquete(paquete,num_req,respuesta,num_tarea,0);
+    armar_paquete(paquete,num_req,respuesta,num_tarea,0,-1,-1,-1);
 
 }
 
@@ -75,7 +92,7 @@ void N_verde::greet_neighbor_ACK(char * paquete, int num_req){
 		}
 	}
 
-	armar_paquete(paquete,num_req,0,101,0);
+	armar_paquete(paquete,num_req,0,101,0,-1,-1,-1);
 
 } 
 

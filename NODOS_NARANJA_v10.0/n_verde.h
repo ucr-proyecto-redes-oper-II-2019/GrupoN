@@ -27,7 +27,9 @@ private:
     vector<Nodos> vecinos;
     vector<char*> files; //primeros dos bytes tienen el numero de segmento, 
 
-    void armar_paquete(char * paquete, int num_req, int respuesta, int num_tarea, int num_prioridad);
+    void armar_paquete(char * paquete, int num_req, int respuesta, 
+                        int num_tarea, int num_prioridad, int fuente, 
+                        int destino, int ttl);
 
 public:
 	N_verde();
