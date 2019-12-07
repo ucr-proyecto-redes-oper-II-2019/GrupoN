@@ -48,7 +48,7 @@ public:
     ~N_naranja();
     int request_pos(char * paquete, int num_req, int num_ID);
     void request_pos_ACK(char * ACK,int num_req,int num_ID, int num_prioridad);
-    void confirm_pos(char * paquete, int num_ID /*IP y puerto, hay que ver como se pasan de parametro(que tipo usar)*/);
+    void confirm_pos(char * paquete, int num_ID, int num_req, char * IP, int port/*IP y puerto, hay que ver como se pasan de parametro(que tipo usar)*/);
     void confirm_pos_ACK(char * ACK, int num_req, int num_ID);
     void disconnect_ACK(char * ACK, int num_req, int num_ID);
     void remove(char * paquete, int num_ID);

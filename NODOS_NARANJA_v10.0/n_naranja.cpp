@@ -118,9 +118,8 @@ void N_naranja::request_pos_ACK(char *ACK, int num_req,int num_ID, int num_prior
     //el cuerpo va vacio entonces hay que ver que poner para identificarlo como vacio
 }
 
-void N_naranja::confirm_pos(char *paquete, int num_ID){
+void N_naranja::confirm_pos(char *paquete, int num_ID, int num_req, char * IP, int port){
     esperando_request_pos_ACK = 0; //si se esta mandando un confirm_pos significa que ya no se esta esperando ningun request_pos_ACK
-    int num_req = rand();
     char * r;
     r = reinterpret_cast<char*>(&num_req);
     paquete[0] = r[3];
@@ -138,6 +137,17 @@ void N_naranja::confirm_pos(char *paquete, int num_ID){
     t = reinterpret_cast<char*>(&num_tarea);
     paquete[6] = t[0];
 
+    unsigned int ip = inet_addr(IP);
+    x = reinterpret_cast<char*>(&ip);
+    paquete[15] = x[3];
+    paquete[16] = x[2];
+    paquete[17] = x[1];
+    paquete[18] = x[0];
+
+    unsigned short puerto = htons(port);
+    x = reinterpret_cast<char*>(&puerto);
+    paquete[19] = x[1];
+    paquete[20] = x[0];
     //falta pasar a bytes el IP y el puerto
 }
 
