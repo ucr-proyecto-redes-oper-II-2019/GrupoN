@@ -8,6 +8,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <semaphore.h>
+#include <omp.h>
 
 #define SEM_NAME "/mutex_envi5"
 #define SEM_NAME2 "/mutex_recvi5"
@@ -16,7 +17,7 @@
 using namespace std;
 
 struct memory {
-    request req;
+    request request;
     int lleno;
 };
 memory* envio;
@@ -34,6 +35,16 @@ memory * make_shm(int key, int * shmid){
     }
     return (memory*)shmat(*shmid, NULL, 0);
 }
+
+
+void copy(char * v1, char * v2, int size){
+    for (int i = 0; i < size; ++i){
+        v1[i] = v2[i];
+    }
+
+}
+
+
 
 int main(int argc, char * argv[]){
     /* MEMORIA COMPARTIDA DE ENVIO */
@@ -56,7 +67,62 @@ int main(int argc, char * argv[]){
         perror("sem_open(3) failed");
         exit(EXIT_FAILURE);
     }
+
+    TCPLite tcpl(20,8088);
 /*************************************************************/
+
+    #pragma omp parallel num_threads(4) shared(tcpl)
+    {
+
+        while(1){
+             if(omp_get_thread_num() == 0){
+                #pragma omp critical (receptor)
+                {
+                    tcpl.receive();
+                }    
+
+            }else if(omp_get_thread_num() == 1) {
+                #pragma omp critical (receptor)
+                {
+                    request req;
+                    int bandera = tcpl.getPaqueteRcv(&req);
+                    if(bandera){
+                        sem_wait(mutex_recv);
+                        if(!recibo->lleno){
+                            recibo->request.port = req.port;
+                            recibo->request.IP = req.IP;
+                            recibo->request.paquete = req.paquete;
+                            recibo->lleno = 1;
+                        }
+                        sem_post(mutex_recv);
+                    }
+                    
+                }  
+
+            }else if(omp_get_thread_num() == 2){
+                #pragma omp critical (emisor)
+                {
+                    sem_wait(mutex_env);
+                    if(envio->lleno){
+                        tcpl.send(envio->request.IP,envio->request.port,envio->request.paquete);
+                        envio->lleno = 0;
+                    }
+                    sem_post(mutex_recv);
+
+                }
+
+            }else{
+                #pragma omp critical (emisor)
+                {
+                    tcpl.send_timeout();
+                }    
+
+
+            }
+
+        }
+
+    }
 
 
 
