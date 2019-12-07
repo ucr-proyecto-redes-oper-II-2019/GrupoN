@@ -5,7 +5,7 @@
 #include <iostream>
 #include <string.h>
 using namespace std;
-#define REQMAXSIZE 1032
+#define REQMAXSIZE 1020
 
 /**
  * @brief The request struct esta estructura se usa para almacenar cada una de las solicitudes que

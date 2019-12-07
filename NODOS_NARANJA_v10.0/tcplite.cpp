@@ -127,7 +127,7 @@ void TCPLite::copyPaq(char * dest, char * vector,int indice,int size){
 
 }
 
-//Lo saca de la volsa recv y lo borra
+//Lo saca de la bolsa recv y lo borra
 int TCPLite::getPaqueteRcv(request * req){
     //char paquete[REQMAXSIZE-5];
     cout<<bolsa_receive->get_size()<<endl;
