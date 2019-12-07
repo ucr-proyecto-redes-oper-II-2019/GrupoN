@@ -59,14 +59,10 @@ int main(int argc, char * argv[]){
     }
     pid_t pid = fork();
     if (pid == 0) {
-        char * ls_args[] = { "./tcpl", "666","777",NULL};
-        system("g++ main_tcpl.cpp -o tcpl -pthread");
+        char * ls_args[] = { "./tcpl", "1234","1234",NULL};
+        system("g++ main_tcpl.cpp tcplite.cpp bolsa.cpp -fopenmp -o tcpl -pthread");
         execvp(ls_args[0],ls_args);
     }
-
-
-
-
 /***********************************************************/
     int stat;
     waitpid(pid, &stat, 0);

@@ -9,6 +9,7 @@
 #include <sys/shm.h>
 #include <semaphore.h>
 #include <omp.h>
+#include "tcplite.h"
 
 #define SEM_NAME "/mutex_envi5"
 #define SEM_NAME2 "/mutex_recvi5"
@@ -17,7 +18,7 @@
 using namespace std;
 
 struct memory {
-    request request;
+    request reqst;
     int lleno;
 };
 memory* envio;
@@ -56,13 +57,13 @@ int main(int argc, char * argv[]){
     recibo = make_shm(atoi(argv[2]), &shmid2);
 
 /*************************************************************/
-    sem_t * mutex_env = sem_open(SEM_NAME, O_CREAT | O_EXCL, SEM_PERMS, INITIAL_VALUE);
+    sem_t * mutex_env = sem_open(SEM_NAME,O_RDWR);
     if (mutex_env == SEM_FAILED) {
         perror("sem_open(3) failed");
         exit(EXIT_FAILURE);
     }
 
-    sem_t * mutex_recv = sem_open(SEM_NAME2, O_CREAT | O_EXCL, SEM_PERMS, INITIAL_VALUE);
+    sem_t * mutex_recv = sem_open(SEM_NAME2,O_RDWR);
     if (mutex_recv == SEM_FAILED) {
         perror("sem_open(3) failed");
         exit(EXIT_FAILURE);
@@ -89,9 +90,9 @@ int main(int argc, char * argv[]){
                     if(bandera){
                         sem_wait(mutex_recv);
                         if(!recibo->lleno){
-                            recibo->request.port = req.port;
-                            recibo->request.IP = req.IP;
-                            recibo->request.paquete = req.paquete;
+                            recibo->reqst.port = req.port;
+                            recibo->reqst.IP = req.IP;
+                            recibo->reqst.paquete = req.paquete;
                             recibo->lleno = 1;
                         }
                         sem_post(mutex_recv);
@@ -104,7 +105,7 @@ int main(int argc, char * argv[]){
                 {
                     sem_wait(mutex_env);
                     if(envio->lleno){
-                        tcpl.send(envio->request.IP,envio->request.port,envio->request.paquete);
+                        tcpl.send(envio->reqst.IP,envio->reqst.port,envio->reqst.paquete);
                         envio->lleno = 0;
                     }
                     sem_post(mutex_recv);
