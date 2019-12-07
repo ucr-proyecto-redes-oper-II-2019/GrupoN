@@ -241,16 +241,20 @@ int main(){
                       for(int w = 0; w < vecinos_naranja.size(); w++){
                         //si los ips son iguales
                         //si los ips son iguales *****falta*****
-                        char id_p[2];
-                        id_p[0] = cola_de_RequestPosACK[j].paquete[5];
-                        id_p[1] = cola_de_RequestPosACK[j].paquete[4];
-                        int * num_id = (int*)(&id_p);
-                        int numID = *num_id; //si el request_pos_ACK respondio con un ID/0 se marca en arreglo_request_pos en la posicion w
-                        if(numID){
-                          arreglo_request_pos[w] = 1;
-                          cola_de_RequestPosACK.erase(cola_de_RequestPosACK.begin());
+                        if(strcmp(vecinos_naranja[w].IP,cola_de_RequestPosACK[j].IP)){
+                          char id_p[2];
+                          id_p[0] = cola_de_RequestPosACK[j].paquete[5];
+                          id_p[1] = cola_de_RequestPosACK[j].paquete[4];
+                          int * num_id = (int*)(&id_p);
+                          int numID = *num_id; //si el request_pos_ACK respondio con un ID/0 se marca en arreglo_request_pos en la posicion w
+                          if(numID){
+                            arreglo_request_pos[w] = 1;
+                            cola_de_RequestPosACK.erase(cola_de_RequestPosACK.begin());
+                            //se saca el request de la cola
+                          }
+
                         }
-                        //se saca el request de la cola
+
                       }
                     }
 	                }
@@ -284,22 +288,22 @@ int main(){
                   if(numconfirmpos == num_req_confirm_pos){
                     for(int w = 0; w < vecinos_naranja.size(); w++){
                       //si los ips son iguales *****falta*****
-                      char id_p[2];
-                      id_p[0] = cola_de_ConfirmPosACK[j].paquete[5];
-                      id_p[1] = cola_de_ConfirmPosACK[j].paquete[4];
-                      int * num_id = (int*)(&id_p);
-                      int numID = *num_id; //si el confirm_pos_ACK respondio con un ID/0 se marca en arreglo_confirm_pos en la posicion w
-                      if(numID){
-                        arreglo_confirm_pos[w] = 1;
-                        cola_de_ConfirmPosACK.erase(cola_de_ConfirmPosACK.begin());
+                      if(strcmp(vecinos_naranja[w].IP,cola_de_ConfirmPosACK[j].IP)){
+                        char id_p[2];
+                        id_p[0] = cola_de_ConfirmPosACK[j].paquete[5];
+                        id_p[1] = cola_de_ConfirmPosACK[j].paquete[4];
+                        int * num_id = (int*)(&id_p);
+                        int numID = *num_id; //si el confirm_pos_ACK respondio con un ID/0 se marca en arreglo_confirm_pos en la posicion w
+                        if(numID){
+                          arreglo_confirm_pos[w] = 1;
+                          cola_de_ConfirmPosACK.erase(cola_de_ConfirmPosACK.begin());
+                          //se saca el request de la cola
+                        }
                       }
-                      //se saca el request de la cola
                     }
                   }
 	              }
 	            }
-
-
 	            vector<char*> ACK;
 							//int num_ID = cola_de_Connect[i]; ???
 	            //request reqConnect = cola_de_Connect[i];
