@@ -1,5 +1,6 @@
 #ifndef TCPLITE_H
 #define TCPLITE_H
+
 #include "bolsa.h"
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -20,13 +21,12 @@ public:
 
     /* LLAMADOS CON HILOS EXTERNOS */
     void send_timeout();
-    int send(char * IP, int port, char paquete[REQMAXSIZE]);
+    int send(char *IP, unsigned short port, char paquete[], int tam);
     int receive();
     int getPaqueteRcv(request*);
 
     /* LLAMADOS INTERNOS */
-    int send_ACK(char * IP, int port, char paquete[REQMAXSIZE]);
-    int check_rcvd();
+    int send_ACK(char *IP,  unsigned short  port, char paquete[], int tam);
     int getBolsaSize();
     void copyPaq(char * dest, char * vector,int indice,int size);
 

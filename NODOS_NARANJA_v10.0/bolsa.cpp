@@ -1,24 +1,19 @@
 #include "bolsa.h"
 
 Bolsa::Bolsa(int max){
-     this->max = max;
- }
-
+    this->max = max;
+}
 
 void Bolsa::copy(char * dest, char * vector,int size){
     for (int i = 0; i < size; ++i){
         dest[i] = vector[i];
     }
-
 }
 
-//0 = bolsa recibir , 1 = bolsa envio
-int Bolsa::insertar(char * IP, int port, char paquete[REQMAXSIZE], int tipo_bolsa){
+bool Bolsa::insertar(char * IP, unsigned short port, char paquete[], int tipo_bolsa, int tam){
     request packet;
-    //packet.IP = new char[15];
+    packet.size = tam;
     packet.IP = IP;
-    //1copy(packet.IP,IP,sizeof(IP));
-    //copy(packet.paquete, paquete, REQMAXSIZE);
     packet.paquete = paquete;
     packet.port = port;
 
@@ -27,11 +22,11 @@ int Bolsa::insertar(char * IP, int port, char paquete[REQMAXSIZE], int tipo_bols
     }else{
         packet.ttl = 0;
     }
-    if(static_cast<int>(bolsa.size()) < max){
+    if(bolsa.size() < max){
         bolsa.push_back(packet);
-        return 1;
+        return true;
     }
-    return 0;
+    return false;
 }
 
 
@@ -59,32 +54,21 @@ int Bolsa::requestIguales(request paqueteACK, request paqueteINFO){
 
 }
 
-
-
-
-//paquete = paquete con ack , busca en la bolsa para borrar el confirmado
-//para bolsa de recibido
 int Bolsa::borrar_confirmado(request paqueteACK){
-    for(int i = 0; i < static_cast<int>(this->bolsa.size()); ++i){
+    for(int i = 0; i < this->bolsa.size(); ++i){
         if( requestIguales(paqueteACK,bolsa.at(i)) ){
-             bolsa.erase (bolsa.begin()+i);
-             return 1;
+            bolsa.erase (bolsa.begin()+i);
+            return 1;
         }
-
     }
-
     return 0;
-
 }
 
-//para bolsa de envio
 void Bolsa::borrar_por_ttl(int i){
-    bolsa[static_cast<unsigned long>(i)].ttl--;
-    if(bolsa[static_cast<unsigned long>(i)].ttl == 0){
+    bolsa[i].ttl--;
+    if(bolsa[i].ttl == 0){
         bolsa.erase(bolsa.begin()+i);
     }
-
-
 }
 
 void Bolsa::borrar_recibido(int i){
@@ -93,7 +77,7 @@ void Bolsa::borrar_recibido(int i){
 }
 
 int Bolsa::get_size(){
-    return static_cast<int>(bolsa.size());
+    return bolsa.size();
 }
 
 request Bolsa::get_paquete(int indice){
