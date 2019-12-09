@@ -57,6 +57,7 @@ public:
     void fill_header(char * paquete, int num_request, int i_c_r, int tarea_realizar);
     void fill_neighbour(char * paquete, int id, unsigned int ip, unsigned short puerto, int size);
     int getID();
+    int getPuerto();
     vector<Nodos> getNaranjas();
 
 };

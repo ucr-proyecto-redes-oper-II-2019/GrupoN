@@ -12,8 +12,8 @@
 #include <semaphore.h>
 #include <omp.h>
 
-#define SEM_NAME "/mutex_envi5"
-#define SEM_NAME2 "/mutex_recvi5"
+//#define SEM_NAME "/mutex_envi5"
+//#define SEM_NAME2 "/mutex_recvi5"
 #define SEM_PERMS (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP)
 #define INITIAL_VALUE 1
 using namespace std;
@@ -51,6 +51,9 @@ int main(int argc, char * argv[]){
     /* MEMORIA COMPARTIDA DE RECIBO */
     int shmid2;
     recibo = make_shm(atoi(argv[2]), &shmid2);
+    char * SEM_NAME = argv[5];
+    char * SEM_NAME2 = argv[6];
+
 
 /*************************************************************/
     sem_t * mutex_env = sem_open(SEM_NAME,O_RDWR);
@@ -65,7 +68,8 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);
     }
 
-    TCPLite tcpl(20,8088);
+
+    TCPLite tcpl(atoi(argv[3]),atoi(argv[4]));
 /*************************************************************/
 
     #pragma omp parallel num_threads(4) shared(tcpl)

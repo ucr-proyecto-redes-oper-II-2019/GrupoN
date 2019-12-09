@@ -421,3 +421,8 @@ int N_naranja::getID(){
 vector<Nodos> N_naranja::getNaranjas(){
   return naranjas;
 }
+
+int N_naranja::getPuerto(){
+    return this->puerto;
+
+}

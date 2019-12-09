@@ -62,6 +62,8 @@ public:
 	void exec_ACK(char * paquete,int num_req);
 	void exec_stop_ACK(char * paquete,int num_req);
 
+	int getPuerto();
+	void llenarDatos(char*); //despues de hacer connect llena con los datos que le proporciona el naranja
     
 
 };

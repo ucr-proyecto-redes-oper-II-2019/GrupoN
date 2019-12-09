@@ -60,14 +60,14 @@ void N_verde:: armar_paquete(char * paquete, int num_req, int respuesta,
 void N_verde::connect(char * paquete){
 	int num_req = rand();
     int num_tarea = 200;
-    armar_paquete(paquete,num_req,1,num_tarea,0);
+    armar_paquete(paquete,num_req,1,num_tarea,0,-1,-1,-1); //revisar
 
 }
 
 void N_verde::disconnect(char * paquete){
 	int num_req = rand();
     int num_tarea = 215;
-    armar_paquete(paquete,num_req,this->nombre,num_tarea,0);	
+    armar_paquete(paquete,num_req,this->nombre,num_tarea,0,-1,-1,-1); //revisar
 }
 
 //COMUNICACION ENTRE VERDES
@@ -184,4 +184,20 @@ void N_verde::exec_stop_ACK(char * paquete,int num_req){
 
 }
 
+int N_verde::getPuerto(){
+    return this->puerto;
 
+}
+
+
+void N_verde::llenarDatos(char * paquete){
+
+    char ID[2];
+    ID[0] = paquete[5];
+    ID[1] = paquete[4];
+    int * id = reinterpret_cast<int*>(ID);
+    this->nombre = *id;
+
+
+
+}

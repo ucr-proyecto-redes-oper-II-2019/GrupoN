@@ -1,5 +1,6 @@
 #include<stdio.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -24,8 +25,8 @@
 #define CONFIRM_POS 210
 #define CONFIRM_POS_ACK 211
 ////////////
-#define SEM_NAME "/mutex_envi5"
-#define SEM_NAME2 "/mutex_recvi5"
+//#define SEM_NAME "/mutex_envi5"
+//#define SEM_NAME2 "/mutex_recvi5"
 #define SEM_PERMS (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP)
 #define INITIAL_VALUE 1
 using namespace std;
@@ -89,22 +90,43 @@ void send(char * IP, int port, char * req_paquete){
 
 }
 
+
+void randstring(char randomString[],int length) {
+
+    static char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";        
+
+    for (int n = 0;n < length;n++) {            
+        int key = rand() % (int)(sizeof(charset) -1);
+        randomString[n] = charset[key];
+    }
+
+    randomString[length] = '\0';
+    
+}
+
+
 /*void buscar_request_para_marcar_en_arreglo(vector<requests> cola, int num_req, int * arreglo_pos){ //cola en la que se
 
 }*/
 
 //main en el que yo estaba trabajando
 
-int main(){
-
+int main(int argc, char * argv[]){
+	//cada naranja tiene que tener semaforos unicos, no puede tener el mismo a otro naranja, cuando se llama al proceso de tcpl este si lo tienen que compartir entonces el nombre se pasa por param
+	char SEM_NAME[10];
+	randstring(SEM_NAME,10);
+	char SEM_NAME2[10];
+	randstring(SEM_NAME2,10);
 
 	/* MEMORIA COMPARTIDA DE ENVIO */
     int shmid1;
-    envio = make_shm(1234, &shmid1);
+    int key_envio = rand()%9000;
+    int key_recibo = rand()%9000;
+    envio = make_shm(key_envio, &shmid1);
 
     /* MEMORIA COMPARTIDA DE RECIBO */
     int shmid2;
-    recibo = make_shm(1234, &shmid2);
+    recibo = make_shm(key_recibo, &shmid2);
 
 /*************************************************************/
     mutex_env = sem_open(SEM_NAME, O_CREAT | O_EXCL, SEM_PERMS, INITIAL_VALUE);
@@ -118,70 +140,85 @@ int main(){
         perror("sem_open(3) failed");
         exit(EXIT_FAILURE);
     }
+
+    N_naranja naranja("grafo.csv","test.txt",(char*)"127.0.0.1");
+    char puerto[(sizeof(int)*8+1)];
+    sprintf(puerto,"%d",naranja.getPuerto());
+   
+
+    char key_env[(sizeof(int)*8+1)];
+    sprintf(key_env,"%d",key_envio);
+
+    char key_rcv[(sizeof(int)*8+1)];
+    sprintf(key_rcv,"%d",key_recibo);
+
     pid_t pid = fork();
     if (pid == 0) {
-        char * ls_args[] = { "./tcpl", "666","777",NULL};
-        system("g++ main_tcpl.cpp -o tcpl -pthread");
+    
+        char * ls_args[] = { "./tcpl",key_env,key_rcv,"20",puerto,SEM_NAME,SEM_NAME2,NULL};
+        system("g++ main_tcpl.cpp -o tcpl -pthread -std=c++11");
         execvp(ls_args[0],ls_args);
     }else{
 
 		vector<request> cola_de_Connect;
 		vector<request> cola_de_RequestPos;
-	  vector<request> cola_de_RequestPosACK;
+	  	vector<request> cola_de_RequestPosACK;
 		vector<request> cola_de_Disconnect;
 		vector<request> cola_de_Remove;
 		vector<request> cola_de_ConfirmPos;
-	  vector<request> cola_de_ConfirmPosACK;
-	  N_naranja naranja("grafo.csv","test.txt",(char*)"10.0.2.15");
+	  	vector<request> cola_de_ConfirmPosACK;
 		char paquete[PACKETSIZE];
 		int port;
 		char * IP;
-		int bandera = 0;
+		//int bandera = 0;
 
-		while(1){
+		//while(1){
 
 			//4 hilos para manejar tcpl y los otros 4 son para cada solicitud
-	    #pragma omp parallel num_threads(6) shared(paquete,port,IP,bandera,mutex_recv,mutex_env, cola_de_Connect,cola_de_RequestPos, cola_de_Disconnect,cola_de_Remove,cola_de_ConfirmPos)
-			{
-				int hilo = omp_get_thread_num();
+    #pragma omp parallel num_threads(6) shared(paquete,port,IP,mutex_recv,mutex_env, cola_de_Connect,cola_de_RequestPos, cola_de_Disconnect,cola_de_Remove,cola_de_ConfirmPos)
+		{
+			int hilo = omp_get_thread_num();
 
-				if(hilo == 0) {
-					#pragma omp critical (receptor)
-						{
-							request req;
-							sem_wait(mutex_recv);
-							if(recibo->lleno){
-								req.port = recibo->request.port;
-								req.IP = recibo->request.IP;
-								req.paquete = recibo->request.paquete;
-								recibo->lleno = 0;
+			if(hilo == 0) {
+				//#pragma omp critical (receptor)
+				//	{	
+				while(1){
 
-							}
-							sem_post(mutex_recv);
-
-	            			int * solicitud = reinterpret_cast<int*>(&req.paquete[6]);
-
-							switch(*solicitud){
-								case CONNECT: cola_de_Connect.push_back(req);
-								break;
-								case REQUEST_POS: cola_de_RequestPos.push_back(req);
-								break;
-								case DISCONNECT: cola_de_Disconnect.push_back(req);
-								break;
-								case REMOVE: cola_de_Remove.push_back(req);
-								break;
-								case CONFIRM_POS: cola_de_ConfirmPos.push_back(req);
-								break;
-	              				case REQUEST_POS_ACK: cola_de_RequestPos.push_back(req);
-	              				break;
-	              				case CONFIRM_POS_ACK: cola_de_ConfirmPosACK.push_back(req);
-	              				break;
-							}
-
+						request req;
+						sem_wait(mutex_recv);
+						if(recibo->lleno){
+							req.port = recibo->request.port;
+							req.IP = recibo->request.IP;
+							req.paquete = recibo->request.paquete;
+							recibo->lleno = 0;
 
 						}
+						sem_post(mutex_recv);
 
-				}else if(hilo == 1 && bandera){
+            			int * solicitud = reinterpret_cast<int*>(&req.paquete[6]);
+
+						switch(*solicitud){
+							case CONNECT: cola_de_Connect.push_back(req);
+							break;
+							case REQUEST_POS: cola_de_RequestPos.push_back(req);
+							break;
+							case DISCONNECT: cola_de_Disconnect.push_back(req);
+							break;
+							case REMOVE: cola_de_Remove.push_back(req);
+							break;
+							case CONFIRM_POS: cola_de_ConfirmPos.push_back(req);
+							break;
+              				case REQUEST_POS_ACK: cola_de_RequestPos.push_back(req);
+              				break;
+              				case CONFIRM_POS_ACK: cola_de_ConfirmPosACK.push_back(req);
+              				break;
+						}
+
+
+					}
+
+			}else if(hilo == 1){
+				while(1){
 					#pragma omp critical(emisor)
 					{
 						for(int i = 0; i < cola_de_Connect.size();++i){
@@ -191,7 +228,7 @@ int main(){
 							numero_request_connect[2] = cola_de_Connect[i].paquete[1];
 							numero_request_connect[3] = cola_de_Connect[i].paquete[0];
 							int * numDeRequestConnect = reinterpret_cast<int*>(numero_request_connect);
-              char * IP_nodo_verde = cola_de_Connect[i].IP;
+	          char * IP_nodo_verde = cola_de_Connect[i].IP;
 							/*
 								revisar si se puede meter a la cola de send (aun hay espacio?) o si se aun no estan instanciados todos los
 								nodos del archivo del grafo (aun se pueden unir verdes?)
@@ -227,42 +264,42 @@ int main(){
 
 	              while(revisar_pos_vacio(arreglo_request_pos, vecinos_naranja.size())){ //mientras que el arreglo tenga espacios vacios
 	                for(int j = 0; j < cola_de_RequestPosACK.size(); j++){
-                    //se tiene que pasar el numero de request del paquete en cola_de_RequestPosACK[i] a numero
-                    char req_pos_recibido[4];
-                    req_pos_recibido[3] = cola_de_RequestPosACK[j].paquete[0];
-                    req_pos_recibido[2] = cola_de_RequestPosACK[j].paquete[1];
-                    req_pos_recibido[1] = cola_de_RequestPosACK[j].paquete[2];
-                    req_pos_recibido[0] = cola_de_RequestPosACK[j].paquete[3];
+	                //se tiene que pasar el numero de request del paquete en cola_de_RequestPosACK[i] a numero
+	                char req_pos_recibido[4];
+	                req_pos_recibido[3] = cola_de_RequestPosACK[j].paquete[0];
+	                req_pos_recibido[2] = cola_de_RequestPosACK[j].paquete[1];
+	                req_pos_recibido[1] = cola_de_RequestPosACK[j].paquete[2];
+	                req_pos_recibido[0] = cola_de_RequestPosACK[j].paquete[3];
 
-                    int * num_req_pos_recibido = (int *)(&req_pos_recibido);
-                    int numreqpos = *num_req_pos_recibido;
-                    //luego se compara con el num_req arriba y si matchean se revisa el IP del request con los de vecinos_naranja
-                    if(numreqpos == num_req_pos){
-                      for(int w = 0; w < vecinos_naranja.size(); w++){
-                        //si los ips son iguales
-                        //si los ips son iguales *****falta*****
-                        if(strcmp(vecinos_naranja[w].IP,cola_de_RequestPosACK[j].IP)){
-                          char id_p[2];
-                          id_p[0] = cola_de_RequestPosACK[j].paquete[5];
-                          id_p[1] = cola_de_RequestPosACK[j].paquete[4];
-                          int * num_id = (int*)(&id_p);
-                          int numID = *num_id; //si el request_pos_ACK respondio con un ID/0 se marca en arreglo_request_pos en la posicion w
-                          if(numID){
-                            arreglo_request_pos[w] = 1;
-                            cola_de_RequestPosACK.erase(cola_de_RequestPosACK.begin());
-                            //se saca el request de la cola
-                          }
+	                int * num_req_pos_recibido = (int *)(&req_pos_recibido);
+	                int numreqpos = *num_req_pos_recibido;
+	                //luego se compara con el num_req arriba y si matchean se revisa el IP del request con los de vecinos_naranja
+	                if(numreqpos == num_req_pos){
+	                  for(int w = 0; w < vecinos_naranja.size(); w++){
+	                    //si los ips son iguales
+	                    //si los ips son iguales *****falta*****
+	                    if(strcmp(vecinos_naranja[w].IP,cola_de_RequestPosACK[j].IP)){
+	                      char id_p[2];
+	                      id_p[0] = cola_de_RequestPosACK[j].paquete[5];
+	                      id_p[1] = cola_de_RequestPosACK[j].paquete[4];
+	                      int * num_id = (int*)(&id_p);
+	                      int numID = *num_id; //si el request_pos_ACK respondio con un ID/0 se marca en arreglo_request_pos en la posicion w
+	                      if(numID){
+	                        arreglo_request_pos[w] = 1;
+	                        cola_de_RequestPosACK.erase(cola_de_RequestPosACK.begin());
+	                        //se saca el request de la cola
+	                      }
 
-                        }
+	                    }
 
-                      }
-                    }
+	                  }
+	                }
 	                }
 	              }
 	              int resultado = revisar_request_pos(arreglo_request_pos,vecinos_naranja.size()); //revisa que todos sean 1, si hay alguno que no es uno devuelve 0
 	              ID_aceptado = !resultado ? 0:1; //si algun nodo naranja no acepta se elige otro numero
 	            }
-              int num_req_confirm_pos = rand() + 65536 % 65535;;
+	          int num_req_confirm_pos = rand() + 65536 % 65535;;
 	            for(int j = 0; j < vecinos_naranja.size(); j++){
 	              char * confirm_pos_paquete;
 
@@ -278,30 +315,30 @@ int main(){
 	            }
 	            while(revisar_pos_vacio(arreglo_confirm_pos, vecinos_naranja.size())){ //mientras que el arreglo tenga espacios vacios
 	              for(int j = 0; j < cola_de_ConfirmPosACK.size(); j++){
-                  char confirm_pos_recibido[4];
-                  confirm_pos_recibido[3] = cola_de_ConfirmPosACK[j].paquete[0];
-                  confirm_pos_recibido[2] = cola_de_ConfirmPosACK[j].paquete[1];
-                  confirm_pos_recibido[1] = cola_de_ConfirmPosACK[j].paquete[2];
-                  confirm_pos_recibido[0] = cola_de_ConfirmPosACK[j].paquete[3];
-                  int * num_confirm_pos_recibido = (int *)(&confirm_pos_recibido);
-                  int numconfirmpos = *num_confirm_pos_recibido;
-                  if(numconfirmpos == num_req_confirm_pos){
-                    for(int w = 0; w < vecinos_naranja.size(); w++){
-                      //si los ips son iguales *****falta*****
-                      if(strcmp(vecinos_naranja[w].IP,cola_de_ConfirmPosACK[j].IP)){
-                        char id_p[2];
-                        id_p[0] = cola_de_ConfirmPosACK[j].paquete[5];
-                        id_p[1] = cola_de_ConfirmPosACK[j].paquete[4];
-                        int * num_id = (int*)(&id_p);
-                        int numID = *num_id; //si el confirm_pos_ACK respondio con un ID/0 se marca en arreglo_confirm_pos en la posicion w
-                        if(numID){
-                          arreglo_confirm_pos[w] = 1;
-                          cola_de_ConfirmPosACK.erase(cola_de_ConfirmPosACK.begin());
-                          //se saca el request de la cola
-                        }
-                      }
-                    }
-                  }
+	              char confirm_pos_recibido[4];
+	              confirm_pos_recibido[3] = cola_de_ConfirmPosACK[j].paquete[0];
+	              confirm_pos_recibido[2] = cola_de_ConfirmPosACK[j].paquete[1];
+	              confirm_pos_recibido[1] = cola_de_ConfirmPosACK[j].paquete[2];
+	              confirm_pos_recibido[0] = cola_de_ConfirmPosACK[j].paquete[3];
+	              int * num_confirm_pos_recibido = (int *)(&confirm_pos_recibido);
+	              int numconfirmpos = *num_confirm_pos_recibido;
+	              if(numconfirmpos == num_req_confirm_pos){
+	                for(int w = 0; w < vecinos_naranja.size(); w++){
+	                  //si los ips son iguales *****falta*****
+	                  if(strcmp(vecinos_naranja[w].IP,cola_de_ConfirmPosACK[j].IP)){
+	                    char id_p[2];
+	                    id_p[0] = cola_de_ConfirmPosACK[j].paquete[5];
+	                    id_p[1] = cola_de_ConfirmPosACK[j].paquete[4];
+	                    int * num_id = (int*)(&id_p);
+	                    int numID = *num_id; //si el confirm_pos_ACK respondio con un ID/0 se marca en arreglo_confirm_pos en la posicion w
+	                    if(numID){
+	                      arreglo_confirm_pos[w] = 1;
+	                      cola_de_ConfirmPosACK.erase(cola_de_ConfirmPosACK.begin());
+	                      //se saca el request de la cola
+	                    }
+	                  }
+	                }
+	              }
 	              }
 	            }
 	            vector<char*> ACK;
@@ -318,7 +355,9 @@ int main(){
 	            //tcpl.send(cola_de_Connect[i].IP,cola_de_Connect[i].port,ACK);
 						}
 					}
-				}else if(hilo == 2 && bandera){
+				}	
+			}else if(hilo == 2 ){
+				while(1){
 					#pragma omp critical(emisor)
 					{
 						for(int i = 0; i < cola_de_RequestPos.size();++i){
@@ -349,8 +388,10 @@ int main(){
 						}
 
 					}
+				}	
 
-				}else if(hilo == 3 && bandera){
+			}else if(hilo == 3){
+				while(1){
 					#pragma omp critical(emisor)
 					{
 
@@ -374,8 +415,10 @@ int main(){
 						}
 
 					}
+				}	
 
-				}else if(hilo == 4 && bandera){
+			}else if(hilo == 4){
+				while(1){
 					#pragma omp critical(emisor)
 					{
 
@@ -400,8 +443,10 @@ int main(){
 						}
 
 					}
+				}	
 
-				}else if(hilo == 5 && bandera){
+			}else if(hilo == 5 ){
+				while(1){
 					#pragma omp critical(emisor)
 					{
 
@@ -426,12 +471,13 @@ int main(){
 						}
 
 					}
-
-				}
+				}	
 
 			}
 
 		}
+
+		//}
 
 	}//else del fork
 
