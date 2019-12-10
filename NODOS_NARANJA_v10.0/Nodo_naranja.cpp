@@ -93,7 +93,7 @@ void send(char * IP, int port, char * req_paquete){
 	    	envio->request.paquete = req_paquete;
 	        envio->lleno = 1;
 	    }
-	sem_post(mutex_recv);
+	sem_post(mutex_env);
 
 }
 
@@ -133,12 +133,8 @@ void intHandler(int senal) {
 int main(int argc, char * argv[]){
 	//cada naranja tiene que tener semaforos unicos, no puede tener el mismo a otro naranja, cuando se llama al proceso de tcpl este si lo tienen que compartir entonces el nombre se pasa por param
 	srand(time(0));
-	SEM_NAME[0] = 'x';
-	SEM_NAME[1] = '\0';
-	SEM_NAME2[0] = 'y';
-	SEM_NAME2[1] = '\0';
-	//randstring(SEM_NAME,10);
-	//randstring(SEM_NAME2,10);
+	randstring(SEM_NAME,10);
+	randstring(SEM_NAME2,10);
 
 	/* MEMORIA COMPARTIDA DE ENVIO */
     key_envio = rand()%9000;

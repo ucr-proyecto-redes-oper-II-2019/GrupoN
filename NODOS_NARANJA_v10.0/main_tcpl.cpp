@@ -55,7 +55,7 @@ void copy(char * v1, char * v2, int size){
 
 void intHandler(int senal) {
     if(senal == SIGINT ){
-        cout<<"catched en tcpl";
+        cout<<"catched en tcpl\n";
         tcpl.closeSocket();
         sem_unlink (SEM_NAME);
         sem_close(mutex_env);
@@ -139,16 +139,18 @@ int main(int argc, char * argv[]){
                 {
                     sem_wait(mutex_env);
                     if(envio->lleno){
+                        cout<<"pone en bolsa de envio\n";
                         tcpl.send(envio->reqst.IP,envio->reqst.port,envio->reqst.paquete,envio->reqst.size);
                         envio->lleno = 0;
                     }
-                    sem_post(mutex_recv);
+                    sem_post(mutex_env);
                 }
             }    
         }else{
             while(1){
                 #pragma omp critical (emisor)
                 {
+                    cout<<"envia\n";
                     tcpl.send_timeout();
                 }
             }    

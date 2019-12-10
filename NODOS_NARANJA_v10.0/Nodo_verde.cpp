@@ -72,7 +72,7 @@ void send(char * IP, int port, char * req_paquete){
 	    	envio->request.paquete = req_paquete;
 	        envio->lleno = 1;
 	    }
-	sem_post(mutex_recv);
+	sem_post(mutex_env);
 
 }
 
@@ -147,13 +147,12 @@ int main(int argc, char * argv[]){
     char key_rcv[(sizeof(int)*8+1)];
     sprintf(key_rcv,"%d",key_recibo);
 
-    signal(SIGINT, intHandler);
 
     pid_t pid = fork();
     if (pid == 0) {
     
         char * ls_args[] = { "./tcpl",key_env,key_rcv,"20",puerto,SEM_NAME,SEM_NAME2,NULL};
-        system("g++ main_tcpl.cpp -o tcpl -pthread -std=c++11");
+        system("g++ tcplite.cpp main_tcpl.cpp bolsa.cpp -pthread -fopenmp -Wno-write-strings -std=c++11 -o tcpl");
         execvp(ls_args[0],ls_args);
 
     }else{
@@ -172,18 +171,15 @@ int main(int argc, char * argv[]){
  		int puertoNaranja = atoi(argv[2]);
     	char paquete[PACKETSIZE];
 		verde.connect(paquete);
-		send(IPNaranja,puertoNaranja,paquete);    	
-
-
-
-		
-		
-
+		send(IPNaranja,puertoNaranja,paquete);    	   
+        cout<<"en verde, connect enviado"<<endl;
 
 
 		#pragma omp parallel num_threads(6) shared(mutex_recv,mutex_env,cola_de_FileExists,cola_de_FileComplete,cola_de_LocateFile,\
 		cola_de_RemoveFile,cola_de_PutFile,cola_de_GetFile,cola_de_ExecStop,cola_de_Exec,cola_de_ConnectACK)
 		{
+            if (signal(SIGINT, intHandler) == SIG_ERR)
+                printf("\ncan't catch SIGINT\n");
 
 			int hilo = omp_get_thread_num();
 
@@ -201,14 +197,17 @@ int main(int argc, char * argv[]){
 				}
 				sem_post(mutex_recv);
 
-				int * soliciud = reinterpret_cast<int*>(&req.paquete[6]);
+                if (req.port){
+                    int * soliciud = reinterpret_cast<int*>(&req.paquete[6]);
 
-				switch(*soliciud){
-					case CONNECT_ACK: cola_de_ConnectACK.push_back(req);
-					break;
+                    switch(*soliciud){
+                        case CONNECT_ACK: cola_de_ConnectACK.push_back(req);
+                        break;
 
-				}
+                    }
 
+                }
+				
 
 			}else if(hilo == 1){
 				while(1){
