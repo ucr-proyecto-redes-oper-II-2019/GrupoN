@@ -44,7 +44,7 @@ private:
     int encontrar_nombre(char * IP,int puerto, vector<Nodos> * vecinos);// busqueda lineal del nombre de nodo verde *metodo que falta*
     //agregar ttl a todos los paquetes
 public:
-    N_naranja(string archivo_grafo_verdes, string archivo_configuracion,char * IP);
+    N_naranja(string archivo_grafo_verdes, string archivo_configuracion,char * IP,int);
     ~N_naranja();
     int request_pos(char * paquete, int num_req, int num_ID);
     void request_pos_ACK(char * ACK,int num_req,int num_ID, int num_prioridad);

@@ -1,15 +1,16 @@
 #include "n_naranja.h"
 
-N_naranja::N_naranja(string archivo_grafo_verdes, string archivo_configuracion,char* IP){
+N_naranja::N_naranja(string archivo_grafo_verdes, string archivo_configuracion,char* IP,int indice){
     llenar_grafo_verdes(archivo_grafo_verdes);
     configurar(archivo_configuracion);
-    for (size_t i = 0; i < naranjas.size(); i++) {
+    /*for (size_t i = 0; i < naranjas.size(); i++) {
       if(strcmp(naranjas[i].IP,IP) == 0){
         this->ID = naranjas[i].nombre;
         break;
       }
-    }
+    }*/
 
+    this->ID = naranjas[indice].nombre;
     srand(static_cast<unsigned int>(time(nullptr)));
     esperando_request_pos_ACK = 0;
 }

@@ -13,6 +13,7 @@
 #include <bits/stdc++.h>
 #include <sys/wait.h>
 #include "n_verde.h"
+#include <signal.h>
 
 #define REQMAXSIZE 1020
 #define PACKETSIZE 1015
@@ -42,6 +43,12 @@ struct memory {
 };
 memory* envio;
 memory* recibo;
+char SEM_NAME[10];
+char SEM_NAME2[10];
+int shmid1;
+int shmid2;
+int key_envio;
+int key_recibo;
 
 
 memory * make_shm(int key, int * shmid){
@@ -83,25 +90,37 @@ void randstring(char randomString[],int length) {
 }
 
 
+void intHandler(int senal) {
+    if(senal == SIGINT ){
+        sem_unlink (SEM_NAME);
+        sem_close(mutex_env);
+        sem_unlink (SEM_NAME2);
+        sem_close(mutex_recv);
+        /* shared memory detach */
+        shmdt(envio);
+        shmctl(shmid1, IPC_RMID, nullptr);
+        shmdt(recibo);
+        shmctl(shmid2, IPC_RMID, nullptr);
+            exit(0);
+    }
+    exit(1);
+}
+
 //ARGUMENTOS
 //argv[1] = IP del naranja al que quiere conectarse 
 //argv[2] = puerto del naranja al que quiere conectarse 
 int main(int argc, char * argv[]){
 	//cada naranja tiene que tener semaforos unicos, no puede tener el mismo a otro naranja, cuando se llama al proceso de tcpl este si lo tienen que compartir entonces el nombre se pasa por param
-	char SEM_NAME[10];
-	randstring(SEM_NAME,10);
-	char SEM_NAME2[10];
-	randstring(SEM_NAME2,10);
+	srand(time(0));
+    randstring(SEM_NAME,10);
+    randstring(SEM_NAME2,10);
 
-	/* MEMORIA COMPARTIDA DE ENVIO */
-    int shmid1;
-    int key_envio = rand()%9000;
-    int key_recibo = rand()%9000;
-
+    /* MEMORIA COMPARTIDA DE ENVIO */
+    key_envio = rand()%9000;
+    key_recibo = rand()%9000;
     envio = make_shm(key_envio, &shmid1);
 
     /* MEMORIA COMPARTIDA DE RECIBO */
-    int shmid2;
     recibo = make_shm(key_recibo, &shmid2);
 
 /*************************************************************/
@@ -127,6 +146,8 @@ int main(int argc, char * argv[]){
 
     char key_rcv[(sizeof(int)*8+1)];
     sprintf(key_rcv,"%d",key_recibo);
+
+    signal(SIGINT, intHandler);
 
     pid_t pid = fork();
     if (pid == 0) {

@@ -1,6 +1,11 @@
 #include "tcplite.h"
 
-TCPLite::TCPLite(int tam_bolsas, int puerto_para_recibir){
+TCPLite::TCPLite(){
+
+
+}
+
+void TCPLite::setAll(int tam_bolsas, int puerto_para_recibir){
     bolsa_send = new Bolsa(tam_bolsas);
     bolsa_receive = new Bolsa(tam_bolsas);
     if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0){
@@ -25,6 +30,7 @@ TCPLite::TCPLite(int tam_bolsas, int puerto_para_recibir){
 TCPLite::~TCPLite(){
     delete bolsa_send;
     delete bolsa_receive;
+    close(sockfd);
     /* Cierra los sockets */
 
 }
@@ -97,7 +103,7 @@ int TCPLite::receive(){
 }
 
 int TCPLite::getPaqueteRcv(request * req){
-    cout<<bolsa_receive->get_size()<<endl;
+    cout<<"bolsa_receive size: "<<bolsa_receive->get_size()<<endl;
     for (int i = 0; i < bolsa_receive->get_size(); i++) {
         if(bolsa_receive->get_paquete(i).paquete[0] == '\0' ){
             char pack[bolsa_receive->get_paquete(i).size];
@@ -139,4 +145,11 @@ void TCPLite::copyPaq(char * dest, char * vector,int indice,int size){
 
 int TCPLite::getBolsaSize(){
     return bolsa_receive->get_size();
+}
+
+void TCPLite::closeSocket(){
+    delete bolsa_send;
+    delete bolsa_receive;
+    close(sockfd);
+    cout<<"closed socket\n";
 }

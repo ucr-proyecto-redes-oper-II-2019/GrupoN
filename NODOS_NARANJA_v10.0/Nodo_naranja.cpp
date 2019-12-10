@@ -13,6 +13,8 @@
 #include <bits/stdc++.h>
 #include <sys/wait.h>
 #include "n_naranja.h"
+#include <signal.h>
+#include <iostream>
 
 #define REQMAXSIZE 1020
 #define PACKETSIZE 1015
@@ -39,7 +41,12 @@ struct memory {
 };
 memory* envio;
 memory* recibo;
-
+char SEM_NAME[10];
+char SEM_NAME2[10];
+int shmid1;
+int shmid2;
+int key_envio;
+int key_recibo;
 
 memory * make_shm(int key, int * shmid){
     // key value of shared memory
@@ -104,28 +111,41 @@ void randstring(char randomString[],int length) {
     
 }
 
+void intHandler(int senal) {
+    if(senal == SIGINT ){
+    	cout<<"catched"<<endl;
+        sem_unlink (SEM_NAME);
+        sem_close(mutex_env);
+        sem_unlink (SEM_NAME2);
+        sem_close(mutex_recv);
+        /* shared memory detach */
+        shmdt(envio);
+        shmctl(shmid1, IPC_RMID, nullptr);
+        shmdt(recibo);
+        shmctl(shmid2, IPC_RMID, nullptr);
+            exit(0);
+    }
+    exit(1);
+}
 
-/*void buscar_request_para_marcar_en_arreglo(vector<requests> cola, int num_req, int * arreglo_pos){ //cola en la que se
-
-}*/
-
-//main en el que yo estaba trabajando
+//para pruebas se envia en argv[1] el id del naranja
 
 int main(int argc, char * argv[]){
 	//cada naranja tiene que tener semaforos unicos, no puede tener el mismo a otro naranja, cuando se llama al proceso de tcpl este si lo tienen que compartir entonces el nombre se pasa por param
-	char SEM_NAME[10];
-	randstring(SEM_NAME,10);
-	char SEM_NAME2[10];
-	randstring(SEM_NAME2,10);
+	srand(time(0));
+	SEM_NAME[0] = 'x';
+	SEM_NAME[1] = '\0';
+	SEM_NAME2[0] = 'y';
+	SEM_NAME2[1] = '\0';
+	//randstring(SEM_NAME,10);
+	//randstring(SEM_NAME2,10);
 
 	/* MEMORIA COMPARTIDA DE ENVIO */
-    int shmid1;
-    int key_envio = rand()%9000;
-    int key_recibo = rand()%9000;
+    key_envio = rand()%9000;
+    key_recibo = rand()%9000;
     envio = make_shm(key_envio, &shmid1);
 
     /* MEMORIA COMPARTIDA DE RECIBO */
-    int shmid2;
     recibo = make_shm(key_recibo, &shmid2);
 
 /*************************************************************/
@@ -141,7 +161,7 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);
     }
 
-    N_naranja naranja("grafo.csv","test.txt",(char*)"127.0.0.1");
+    N_naranja naranja("grafo.csv","test.txt",(char*)"127.0.0.1", atoi(argv[1])); //el tercer param es solo para pruebas
     char puerto[(sizeof(int)*8+1)];
     sprintf(puerto,"%d",naranja.getPuerto());
    
@@ -152,14 +172,18 @@ int main(int argc, char * argv[]){
     char key_rcv[(sizeof(int)*8+1)];
     sprintf(key_rcv,"%d",key_recibo);
 
+    //signal(SIGINT, intHandler);
+    cout<<"antes de fork\n";
+
     pid_t pid = fork();
     if (pid == 0) {
-    
+    	//cout<<"k env: "<<key_env<<" k rcv: "<<key_rcv<<" port: "<<puerto<<" sem1: "<<SEM_NAME<<" sem2: "<<SEM_NAME2<<endl;
         char * ls_args[] = { "./tcpl",key_env,key_rcv,"20",puerto,SEM_NAME,SEM_NAME2,NULL};
-        system("g++ main_tcpl.cpp -o tcpl -pthread -std=c++11");
+        system("g++ tcplite.cpp main_tcpl.cpp bolsa.cpp -pthread -fopenmp -Wno-write-strings -std=c++11 -o tcpl");
         execvp(ls_args[0],ls_args);
     }else{
 
+    	 
 		vector<request> cola_de_Connect;
 		vector<request> cola_de_RequestPos;
 	  	vector<request> cola_de_RequestPosACK;
@@ -177,6 +201,8 @@ int main(int argc, char * argv[]){
 			//4 hilos para manejar tcpl y los otros 4 son para cada solicitud
     #pragma omp parallel num_threads(6) shared(paquete,port,IP,mutex_recv,mutex_env, cola_de_Connect,cola_de_RequestPos, cola_de_Disconnect,cola_de_Remove,cola_de_ConfirmPos)
 		{
+			if (signal(SIGINT, intHandler) == SIG_ERR)
+        		printf("\ncan't catch SIGINT\n");
 			int hilo = omp_get_thread_num();
 
 			if(hilo == 0) {
@@ -184,6 +210,7 @@ int main(int argc, char * argv[]){
 				//	{	
 				while(1){
 
+						//cout<<"entra hilo 0"<<endl;
 						request req;
 						sem_wait(mutex_recv);
 						if(recibo->lleno){
@@ -195,32 +222,34 @@ int main(int argc, char * argv[]){
 						}
 						sem_post(mutex_recv);
 
-            			int * solicitud = reinterpret_cast<int*>(&req.paquete[6]);
+						if(req.port){ //saco algo
+	            			int * solicitud = reinterpret_cast<int*>(&req.paquete[6]);
+	            			cout<<"solicitud: "<<*solicitud<<endl;
 
-						switch(*solicitud){
-							case CONNECT: cola_de_Connect.push_back(req);
-							break;
-							case REQUEST_POS: cola_de_RequestPos.push_back(req);
-							break;
-							case DISCONNECT: cola_de_Disconnect.push_back(req);
-							break;
-							case REMOVE: cola_de_Remove.push_back(req);
-							break;
-							case CONFIRM_POS: cola_de_ConfirmPos.push_back(req);
-							break;
-              				case REQUEST_POS_ACK: cola_de_RequestPos.push_back(req);
-              				break;
-              				case CONFIRM_POS_ACK: cola_de_ConfirmPosACK.push_back(req);
-              				break;
-						}
-
+							switch(*solicitud){
+								case CONNECT: cola_de_Connect.push_back(req);
+								break;
+								case REQUEST_POS: cola_de_RequestPos.push_back(req);
+								break;
+								case DISCONNECT: cola_de_Disconnect.push_back(req);
+								break;
+								case REMOVE: cola_de_Remove.push_back(req);
+								break;
+								case CONFIRM_POS: cola_de_ConfirmPos.push_back(req);
+								break;
+	              				case REQUEST_POS_ACK: cola_de_RequestPos.push_back(req);
+	              				break;
+	              				case CONFIRM_POS_ACK: cola_de_ConfirmPosACK.push_back(req);
+	              				break;
+							}
+						}	
 
 					}
 
 			}else if(hilo == 1){
 				while(1){
 					#pragma omp critical(emisor)
-					{
+					{	//cout<<"entra hilo 1 en reg critical"<<endl;
 						for(int i = 0; i < cola_de_Connect.size();++i){
 							char numero_request_connect[4];
 							numero_request_connect[0] = cola_de_Connect[i].paquete[3];
@@ -228,7 +257,7 @@ int main(int argc, char * argv[]){
 							numero_request_connect[2] = cola_de_Connect[i].paquete[1];
 							numero_request_connect[3] = cola_de_Connect[i].paquete[0];
 							int * numDeRequestConnect = reinterpret_cast<int*>(numero_request_connect);
-	          char * IP_nodo_verde = cola_de_Connect[i].IP;
+	          				char * IP_nodo_verde = cola_de_Connect[i].IP;
 							/*
 								revisar si se puede meter a la cola de send (aun hay espacio?) o si se aun no estan instanciados todos los
 								nodos del archivo del grafo (aun se pueden unir verdes?)
@@ -360,6 +389,7 @@ int main(int argc, char * argv[]){
 				while(1){
 					#pragma omp critical(emisor)
 					{
+						//cout<<"entra hilo 2 en reg critical"<<endl;
 						for(int i = 0; i < cola_de_RequestPos.size();++i){
 
 							//request_pos_ACK(char * ACK,int num_req,int num_ID, int num_prioridad);
@@ -394,7 +424,7 @@ int main(int argc, char * argv[]){
 				while(1){
 					#pragma omp critical(emisor)
 					{
-
+						//cout<<"entra hilo 3 en reg critical"<<endl;
 						for(int i = 0; i < cola_de_Disconnect.size();++i){
 
 							char paqueteACK[PACKETSIZE];
@@ -421,7 +451,7 @@ int main(int argc, char * argv[]){
 				while(1){
 					#pragma omp critical(emisor)
 					{
-
+						//cout<<"entra hilo 4 en reg critical"<<"\n cola remove size: "<<cola_de_Remove.size()<<endl;
 						for(int i = 0; i < cola_de_Remove.size();++i){
 
 							char paqueteACK[PACKETSIZE];
@@ -449,7 +479,7 @@ int main(int argc, char * argv[]){
 				while(1){
 					#pragma omp critical(emisor)
 					{
-
+						//cout<<"entra hilo 5 en reg critical"<<endl;
 						for(int i = 0; i < cola_de_ConfirmPos.size();++i){
 
 							char paqueteACK[PACKETSIZE];

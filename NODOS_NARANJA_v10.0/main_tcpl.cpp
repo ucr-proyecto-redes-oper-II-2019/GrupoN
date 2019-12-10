@@ -11,6 +11,8 @@
 #include <sys/shm.h>
 #include <semaphore.h>
 #include <omp.h>
+#include <signal.h>
+#include <iostream>
 
 //#define SEM_NAME "/mutex_envi5"
 //#define SEM_NAME2 "/mutex_recvi5"
@@ -24,6 +26,14 @@ struct memory {
 };
 static memory* envio;
 static memory* recibo;
+
+sem_t * mutex_env;
+sem_t * mutex_recv;
+char * SEM_NAME;
+char * SEM_NAME2;
+int shmid1;
+int shmid2;
+TCPLite tcpl;
 
 memory * make_shm(int key, int * shmid){
     // shared memory create
@@ -43,44 +53,69 @@ void copy(char * v1, char * v2, int size){
 
 }
 
+void intHandler(int senal) {
+    if(senal == SIGINT ){
+        cout<<"catched en tcpl";
+        tcpl.closeSocket();
+        sem_unlink (SEM_NAME);
+        sem_close(mutex_env);
+        sem_unlink (SEM_NAME2);
+        sem_close(mutex_recv);
+        /* shared memory detach */
+        shmdt(envio);
+        shmctl(shmid1, IPC_RMID, nullptr);
+        shmdt(recibo);
+        shmctl(shmid2, IPC_RMID, nullptr);
+            exit(0);
+    }
+    exit(1);
+}
+
 int main(int argc, char * argv[]){
     /* MEMORIA COMPARTIDA DE ENVIO */
-    int shmid1;
+    
     envio = make_shm(atoi(argv[1]), &shmid1);
 
     /* MEMORIA COMPARTIDA DE RECIBO */
-    int shmid2;
+   
     recibo = make_shm(atoi(argv[2]), &shmid2);
-    char * SEM_NAME = argv[5];
-    char * SEM_NAME2 = argv[6];
+    SEM_NAME = argv[5];
+    SEM_NAME2 = argv[6];
 
 
 /*************************************************************/
-    sem_t * mutex_env = sem_open(SEM_NAME,O_RDWR);
+    mutex_env = sem_open(SEM_NAME,O_RDWR);
     if (mutex_env == SEM_FAILED) {
         perror("sem_open(3) failed");
         exit(EXIT_FAILURE);
     }
 
-    sem_t * mutex_recv = sem_open(SEM_NAME2,O_RDWR);
+    mutex_recv = sem_open(SEM_NAME2,O_RDWR);
     if (mutex_recv == SEM_FAILED) {
         perror("sem_open(3) failed");
         exit(EXIT_FAILURE);
     }
 
 
-    TCPLite tcpl(atoi(argv[3]),atoi(argv[4]));
+    tcpl.setAll(atoi(argv[3]),atoi(argv[4]));
 /*************************************************************/
 
     #pragma omp parallel num_threads(4) shared(tcpl)
     {
-        while(1){
-             if(omp_get_thread_num() == 0){
+        if (signal(SIGINT, intHandler) == SIG_ERR)
+        printf("\ncan't catch SIGINT\n");
+
+
+         if(omp_get_thread_num() == 0){
+            while(1){
                 #pragma omp critical (receptor)
                 {
                     tcpl.receive();
                 }
-            }else if(omp_get_thread_num() == 1) {
+            }    
+        }else if(omp_get_thread_num() == 1) {
+            while(1){
+
                 #pragma omp critical (receptor)
                 {
                     request req;
@@ -97,7 +132,9 @@ int main(int argc, char * argv[]){
                         sem_post(mutex_recv);
                     }
                 }
-            }else if(omp_get_thread_num() == 2){
+            }    
+        }else if(omp_get_thread_num() == 2){
+            while(1){
                 #pragma omp critical (emisor)
                 {
                     sem_wait(mutex_env);
@@ -107,13 +144,16 @@ int main(int argc, char * argv[]){
                     }
                     sem_post(mutex_recv);
                 }
-            }else{
+            }    
+        }else{
+            while(1){
                 #pragma omp critical (emisor)
                 {
                     tcpl.send_timeout();
                 }
-            }
+            }    
         }
+        
     }
 
 

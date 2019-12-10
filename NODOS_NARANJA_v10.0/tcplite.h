@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <cstdio>
+#include <unistd.h>
 
 class TCPLite{
 private:
@@ -16,8 +17,9 @@ private:
     void copy(char*,char*,int);
 
 public:
-    TCPLite(int tam_bolsas,int puerto_para_recibir);
+    TCPLite();
     ~TCPLite();
+
 
     /* LLAMADOS CON HILOS EXTERNOS */
     void send_timeout();
@@ -29,6 +31,8 @@ public:
     int send_ACK(char *IP,  unsigned short  port, char paquete[], int tam);
     int getBolsaSize();
     void copyPaq(char * dest, char * vector,int indice,int size);
+    void closeSocket();
+    void setAll(int,int);
 
 };
 
