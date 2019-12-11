@@ -14,8 +14,8 @@
 #include <signal.h>
 #include <iostream>
 
-//#define SEM_NAME "/mutex_envi5"
-//#define SEM_NAME2 "/mutex_recvi5"
+//#define SEM_NAME "/mutex_memEnvi5"
+//#define SEM_NAME2 "/mutex_memRecvi5"
 #define SEM_PERMS (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP)
 #define INITIAL_VALUE 1
 using namespace std;
@@ -27,8 +27,8 @@ struct memory {
 static memory* envio;
 static memory* recibo;
 
-sem_t * mutex_env;
-sem_t * mutex_recv;
+sem_t * mutex_memEnv;
+sem_t * mutex_memRecv;
 char * SEM_NAME;
 char * SEM_NAME2;
 int shmid1;
@@ -58,9 +58,9 @@ void intHandler(int senal) {
         cout<<"catched en tcpl\n";
         tcpl.closeSocket();
         sem_unlink (SEM_NAME);
-        sem_close(mutex_env);
+        sem_close(mutex_memEnv);
         sem_unlink (SEM_NAME2);
-        sem_close(mutex_recv);
+        sem_close(mutex_memRecv);
         /* shared memory detach */
         shmdt(envio);
         shmctl(shmid1, IPC_RMID, nullptr);
@@ -73,25 +73,25 @@ void intHandler(int senal) {
 
 int main(int argc, char * argv[]){
     /* MEMORIA COMPARTIDA DE ENVIO */
-    
+
     envio = make_shm(atoi(argv[1]), &shmid1);
 
     /* MEMORIA COMPARTIDA DE RECIBO */
-   
+
     recibo = make_shm(atoi(argv[2]), &shmid2);
     SEM_NAME = argv[5];
     SEM_NAME2 = argv[6];
 
 
 /*************************************************************/
-    mutex_env = sem_open(SEM_NAME,O_RDWR);
-    if (mutex_env == SEM_FAILED) {
+    mutex_memEnv = sem_open(SEM_NAME,O_RDWR);
+    if (mutex_memEnv == SEM_FAILED) {
         perror("sem_open(3) failed");
         exit(EXIT_FAILURE);
     }
 
-    mutex_recv = sem_open(SEM_NAME2,O_RDWR);
-    if (mutex_recv == SEM_FAILED) {
+    mutex_memRecv = sem_open(SEM_NAME2,O_RDWR);
+    if (mutex_memRecv == SEM_FAILED) {
         perror("sem_open(3) failed");
         exit(EXIT_FAILURE);
     }
@@ -108,20 +108,22 @@ int main(int argc, char * argv[]){
 
          if(omp_get_thread_num() == 0){
             while(1){
-                #pragma omp critical (receptor)
-                {
+                //#pragma omp critical (receptor)
+                //{
+                    //sem_wait(tcpl.mutex_memEnv);
                     tcpl.receive();
-                }
-            }    
+                  //  sem_wait(tcpl.mutex_memEnv);
+                //}
+            }
         }else if(omp_get_thread_num() == 1) {
             while(1){
 
-                #pragma omp critical (receptor)
-                {
+                //#pragma omp critical (receptor)
+                //{
                     request req;
                     int bandera = tcpl.getPaqueteRcv(&req);
                     if(bandera){
-                        sem_wait(mutex_recv);
+                        sem_wait(mutex_memRecv);
                         if(!recibo->lleno){
                             recibo->reqst.port = req.port;
                             recibo->reqst.IP = req.IP;
@@ -129,33 +131,34 @@ int main(int argc, char * argv[]){
                             recibo->reqst.size = req.size;
                             recibo->lleno = 1;
                         }
-                        sem_post(mutex_recv);
+                        sem_post(mutex_memRecv);
                     }
-                }
-            }    
+                //}
+            }
         }else if(omp_get_thread_num() == 2){
             while(1){
-                #pragma omp critical (emisor)
-                {
-                    sem_wait(mutex_env);
-                    if(envio->lleno){
-                        cout<<"pone en bolsa de envio\n";
-                        tcpl.send(envio->reqst.IP,envio->reqst.port,envio->reqst.paquete,envio->reqst.size);
-                        envio->lleno = 0;
-                    }
-                    sem_post(mutex_env);
-                }
-            }    
+
+                  sem_wait(mutex_memEnv);
+                  if(envio->lleno){
+                      cout<<"pone en bolsa de envio\n";
+                      tcpl.send(envio->reqst.IP,envio->reqst.port,envio->reqst.paquete,envio->reqst.size);
+                      envio->lleno = 0;
+                  }
+                  sem_post(mutex_memEnv);
+
+            }
         }else{
             while(1){
-                #pragma omp critical (emisor)
-                {
-                    cout<<"envia\n";
+                //#pragma omp critical (emisor)
+                //{
+                    //sem_wait(mutex_memEnv);
+                    //cout<<"envia\n";
                     tcpl.send_timeout();
-                }
-            }    
+                  //  sem_post(mutex_memEnv);
+                //}
+            }
         }
-        
+
     }
 
 
@@ -163,9 +166,9 @@ int main(int argc, char * argv[]){
 
     /* cleanup semaphores */
     sem_unlink (SEM_NAME);
-    sem_close(mutex_env);
+    sem_close(mutex_memEnv);
     sem_unlink (SEM_NAME2);
-    sem_close(mutex_recv);
+    sem_close(mutex_memRecv);
     /* shared memory detach */
     shmdt(envio);
     shmctl(shmid1, IPC_RMID, nullptr);

@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include "tcplite.h"
+#include "Request.h"
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <semaphore.h>
@@ -15,6 +16,7 @@
 #include "n_naranja.h"
 #include <signal.h>
 #include <iostream>
+#include <string.h>
 
 #define REQMAXSIZE 1020
 #define PACKETSIZE 1015
@@ -27,14 +29,14 @@
 #define CONFIRM_POS 210
 #define CONFIRM_POS_ACK 211
 ////////////
-//#define SEM_NAME "/mutex_envi5"
-//#define SEM_NAME2 "/mutex_recvi5"
+//#define SEM_NAME "/mutex_memEnvi5"
+//#define SEM_NAME2 "/mutex_memRecvi5"
 #define SEM_PERMS (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP)
 #define INITIAL_VALUE 1
 using namespace std;
 
-sem_t * mutex_env;
-sem_t * mutex_recv;
+sem_t * mutex_memEnv;
+sem_t * mutex_memRecv;
 struct memory {
     struct request request;
     int lleno;
@@ -83,41 +85,49 @@ int revisar_request_pos(int * arreglo_request_pos, int cantidad_naranjas){
   }
   return 1;
 }
+void copiar(char * src, char * dest, int tam){
+  for(int i = 0 ; i < 15 ; i++){
+    dest [i] = '\0';
+  }
+  for (int i = 0; i < tam; i++) {
+    dest[i] = src[i];
+  }
+}
 
-
-void send(char * IP, int port, char * req_paquete){
-	sem_wait(mutex_env);
+void send(char * IP, int port, char * req_paquete, int tam){
+	sem_wait(mutex_memEnv);
 	    if(!envio->lleno){
-	    	envio->request.IP = IP;
+	    	copiar(IP,envio->request.IP,strlen(IP));
 	    	envio->request.port = port;
-	    	envio->request.paquete = req_paquete;
-	        envio->lleno = 1;
+	    	copiar(req_paquete,envio->request.paquete,tam);
+        //envio->request.size
+	      envio->lleno = 1;
 	    }
-	sem_post(mutex_env);
+	sem_post(mutex_memEnv);
 
 }
 
 
 void randstring(char randomString[],int length) {
 
-    static char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";        
+    static char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
-    for (int n = 0;n < length;n++) {            
+    for (int n = 0;n < length;n++) {
         int key = rand() % (int)(sizeof(charset) -1);
         randomString[n] = charset[key];
     }
 
     randomString[length] = '\0';
-    
+
 }
 
 void intHandler(int senal) {
     if(senal == SIGINT ){
     	cout<<"catched"<<endl;
         sem_unlink (SEM_NAME);
-        sem_close(mutex_env);
+        sem_close(mutex_memEnv);
         sem_unlink (SEM_NAME2);
-        sem_close(mutex_recv);
+        sem_close(mutex_memRecv);
         /* shared memory detach */
         shmdt(envio);
         shmctl(shmid1, IPC_RMID, nullptr);
@@ -145,14 +155,14 @@ int main(int argc, char * argv[]){
     recibo = make_shm(key_recibo, &shmid2);
 
 /*************************************************************/
-    mutex_env = sem_open(SEM_NAME, O_CREAT | O_EXCL, SEM_PERMS, INITIAL_VALUE);
-    if (mutex_env == SEM_FAILED) {
+    mutex_memEnv = sem_open(SEM_NAME, O_CREAT | O_EXCL, SEM_PERMS, INITIAL_VALUE);
+    if (mutex_memEnv == SEM_FAILED) {
         perror("sem_open(3) failed");
         exit(EXIT_FAILURE);
     }
 
-    mutex_recv = sem_open(SEM_NAME2, O_CREAT | O_EXCL, SEM_PERMS, INITIAL_VALUE);
-    if (mutex_recv == SEM_FAILED) {
+    mutex_memRecv = sem_open(SEM_NAME2, O_CREAT | O_EXCL, SEM_PERMS, INITIAL_VALUE);
+    if (mutex_memRecv == SEM_FAILED) {
         perror("sem_open(3) failed");
         exit(EXIT_FAILURE);
     }
@@ -160,7 +170,7 @@ int main(int argc, char * argv[]){
     N_naranja naranja("grafo.csv","test.txt",(char*)"127.0.0.1", atoi(argv[1])); //el tercer param es solo para pruebas
     char puerto[(sizeof(int)*8+1)];
     sprintf(puerto,"%d",naranja.getPuerto());
-   
+
 
     char key_env[(sizeof(int)*8+1)];
     sprintf(key_env,"%d",key_envio);
@@ -169,8 +179,8 @@ int main(int argc, char * argv[]){
     sprintf(key_rcv,"%d",key_recibo);
 
     //signal(SIGINT, intHandler);
-    cout<<"antes de fork\n";
 
+    cout<<"antes de fork\n";
     pid_t pid = fork();
     if (pid == 0) {
     	//cout<<"k env: "<<key_env<<" k rcv: "<<key_rcv<<" port: "<<puerto<<" sem1: "<<SEM_NAME<<" sem2: "<<SEM_NAME2<<endl;
@@ -179,14 +189,14 @@ int main(int argc, char * argv[]){
         execvp(ls_args[0],ls_args);
     }else{
 
-    	 
+
 		vector<request> cola_de_Connect;
 		vector<request> cola_de_RequestPos;
-	  	vector<request> cola_de_RequestPosACK;
+	  vector<request> cola_de_RequestPosACK;
 		vector<request> cola_de_Disconnect;
 		vector<request> cola_de_Remove;
 		vector<request> cola_de_ConfirmPos;
-	  	vector<request> cola_de_ConfirmPosACK;
+	  vector<request> cola_de_ConfirmPosACK;
 		char paquete[PACKETSIZE];
 		int port;
 		char * IP;
@@ -195,7 +205,7 @@ int main(int argc, char * argv[]){
 		//while(1){
 
 			//4 hilos para manejar tcpl y los otros 4 son para cada solicitud
-    #pragma omp parallel num_threads(6) shared(paquete,port,IP,mutex_recv,mutex_env, cola_de_Connect,cola_de_RequestPos, cola_de_Disconnect,cola_de_Remove,cola_de_ConfirmPos)
+    #pragma omp parallel num_threads(6) shared(paquete,port,IP,mutex_memRecv,mutex_memEnv, cola_de_Connect,cola_de_RequestPos, cola_de_Disconnect,cola_de_Remove,cola_de_ConfirmPos)
 		{
 			if (signal(SIGINT, intHandler) == SIG_ERR)
         		printf("\ncan't catch SIGINT\n");
@@ -203,20 +213,21 @@ int main(int argc, char * argv[]){
 
 			if(hilo == 0) {
 				//#pragma omp critical (receptor)
-				//	{	
+				//	{
 				while(1){
 
 						//cout<<"entra hilo 0"<<endl;
 						request req;
-						sem_wait(mutex_recv);
+						sem_wait(mutex_memRecv);
 						if(recibo->lleno){
 							req.port = recibo->request.port;
-							req.IP = recibo->request.IP;
-							req.paquete = recibo->request.paquete;
+							copiar(recibo->request.IP,req.IP,15);
+              copiar(recibo->request.paquete,req.paquete,recibo->request.size);
+              req.size = recibo->request.size;
 							recibo->lleno = 0;
 
 						}
-						sem_post(mutex_recv);
+						sem_post(mutex_memRecv);
 
 						if(req.port){ //saco algo
 	            			int * solicitud = reinterpret_cast<int*>(&req.paquete[6]);
@@ -233,19 +244,19 @@ int main(int argc, char * argv[]){
 								break;
 								case CONFIRM_POS: cola_de_ConfirmPos.push_back(req);
 								break;
-	              				case REQUEST_POS_ACK: cola_de_RequestPos.push_back(req);
-	              				break;
-	              				case CONFIRM_POS_ACK: cola_de_ConfirmPosACK.push_back(req);
-	              				break;
+        				case REQUEST_POS_ACK: cola_de_RequestPos.push_back(req);
+        				break;
+        				case CONFIRM_POS_ACK: cola_de_ConfirmPosACK.push_back(req);
+        				break;
 							}
-						}	
+						}
 
 					}
 
 			}else if(hilo == 1){
 				while(1){
-					#pragma omp critical(emisor)
-					{	//cout<<"entra hilo 1 en reg critical"<<endl;
+				//	#pragma omp critical(emisor)
+					//{	//cout<<"entra hilo 1 en reg critical"<<endl;
 						for(int i = 0; i < cola_de_Connect.size();++i){
 							char numero_request_connect[4];
 							numero_request_connect[0] = cola_de_Connect[i].paquete[3];
@@ -253,7 +264,7 @@ int main(int argc, char * argv[]){
 							numero_request_connect[2] = cola_de_Connect[i].paquete[1];
 							numero_request_connect[3] = cola_de_Connect[i].paquete[0];
 							int * numDeRequestConnect = reinterpret_cast<int*>(numero_request_connect);
-	          				char * IP_nodo_verde = cola_de_Connect[i].IP;
+	          	char * IP_nodo_verde = cola_de_Connect[i].IP;
 							/*
 								revisar si se puede meter a la cola de send (aun hay espacio?) o si se aun no estan instanciados todos los
 								nodos del archivo del grafo (aun se pueden unir verdes?)
@@ -273,11 +284,11 @@ int main(int argc, char * argv[]){
 	            while(!ID_aceptado){
 	              int num_req_pos = rand()+ 65536 % 65535;
 	              num_ID_verde = rand() + 65536 % 65535;
-	              char * request_pos_paquete;
+	              char request_pos_paquete[15];
 	              naranja.request_pos(request_pos_paquete,num_req_pos,num_ID_verde);
 	              for(int j = 0 ; j < vecinos_naranja.size();j++){
 
-	              	send(vecinos_naranja[j].IP,vecinos_naranja[j].puerto,request_pos_paquete);
+	              	send(vecinos_naranja[j].IP,vecinos_naranja[j].puerto,request_pos_paquete,15);
 
 	                //tcpl.send(vecinos_naranja[j].IP,vecinos_naranja[j].puerto,request_pos_paquete);
 	                /****si usamos memoria compartida en esta parte se meten los datos en memoria compartida******/
@@ -328,9 +339,9 @@ int main(int argc, char * argv[]){
 	            for(int j = 0; j < vecinos_naranja.size(); j++){
 	              char * confirm_pos_paquete;
 
-	              naranja.confirm_pos(confirm_pos_paquete,num_ID_verde,num_req_confirm_pos,cola_de_Connect[i].IP,cola_de_Connect[i].port); //de parametros faltan el IP y el puerto, revisar n_naranja.h
+	              int tamCP = naranja.confirm_pos(confirm_pos_paquete,num_ID_verde,num_req_confirm_pos,cola_de_Connect[i].IP,cola_de_Connect[i].port); //de parametros faltan el IP y el puerto, revisar n_naranja.h
 
-	              send(vecinos_naranja[j].IP,vecinos_naranja[j].puerto,confirm_pos_paquete);
+	              send(vecinos_naranja[j].IP,vecinos_naranja[j].puerto,confirm_pos_paquete,tamCP);
 	              //tcpl.send(vecinos_naranja[j].IP,vecinos_naranja[j].puerto,confirm_pos_paquete); /****/
 	              /****si usamos memoria compartida en esta parte se meten los datos en memoria compartida******/
 	            }
@@ -366,30 +377,33 @@ int main(int argc, char * argv[]){
 	              }
 	              }
 	            }
-	            vector<char*> ACK;
+	            vector<request> ACK;
 							//int num_ID = cola_de_Connect[i]; ???
 	            //request reqConnect = cola_de_Connect[i];
 
 	            //se manda connect ack cuando se reciban todos los confirm_pos_ACK
 							naranja.connect_ACK(&ACK,cola_de_Connect[i].port,cola_de_Connect[i].IP,*numDeRequestConnect); /*revisar parametros connect ack*/
 							//porque estaba comentado?
-							for (int j = 0; j < ACK.size(); j++) {
-								send(cola_de_Connect[i].IP,cola_de_Connect[i].port,ACK[i]);
+
+              for (int j = 0; j < ACK.size(); j++) {
+								send(ACK[i].IP,ACK[i].port,ACK[i].paquete,ACK[i].size);
 									//tcpl.send(cola_de_Connect[i].IP,cola_de_Connect[i].port,ACK[i]);
 							}
+
+
 	            //tcpl.send(cola_de_Connect[i].IP,cola_de_Connect[i].port,ACK);
 						}
-					}
-				}	
+					//}
+				}
 			}else if(hilo == 2 ){
 				while(1){
-					#pragma omp critical(emisor)
-					{
+					//#pragma omp critical(emisor)
+					//{
 						//cout<<"entra hilo 2 en reg critical"<<endl;
 						for(int i = 0; i < cola_de_RequestPos.size();++i){
 
 							//request_pos_ACK(char * ACK,int num_req,int num_ID, int num_prioridad);
-							char paqueteACK[PACKETSIZE];
+							char paqueteACK[15];
 
 							char num_request[4];
 							num_request[0] = cola_de_RequestPos[i].paquete[3];
@@ -409,17 +423,17 @@ int main(int argc, char * argv[]){
 							int * num_prioridad = reinterpret_cast<int*>(prioridad);
 
 							naranja.request_pos_ACK(paqueteACK, *num_req, *nombre, *num_prioridad);
-							send(cola_de_RequestPos[i].IP,cola_de_RequestPos[i].port,paqueteACK);
+							send(cola_de_RequestPos[i].IP,cola_de_RequestPos[i].port,paqueteACK,15);
 							//tcpl.send(cola_de_RequestPos[i].IP,cola_de_RequestPos[i].port,paqueteACK);
 						}
 
-					}
-				}	
+				//	}
+				}
 
 			}else if(hilo == 3){
 				while(1){
-					#pragma omp critical(emisor)
-					{
+					//#pragma omp critical(emisor)
+				//	{
 						//cout<<"entra hilo 3 en reg critical"<<endl;
 						for(int i = 0; i < cola_de_Disconnect.size();++i){
 
@@ -436,21 +450,21 @@ int main(int argc, char * argv[]){
 							ID[1] = cola_de_Disconnect[i].paquete[4];
 							int * nombre = reinterpret_cast<int*>(ID);
 							naranja.disconnect_ACK(paqueteACK, *num_req,*nombre);
-							send(cola_de_Disconnect[i].IP,cola_de_Disconnect[i].port,paqueteACK);
+							send(cola_de_Disconnect[i].IP,cola_de_Disconnect[i].port,paqueteACK,15);
 							//tcpl.send(cola_de_Disconnect[i].IP,cola_de_Disconnect[i].port,paqueteACK);
 						}
 
-					}
-				}	
+					//}
+				}
 
 			}else if(hilo == 4){
 				while(1){
-					#pragma omp critical(emisor)
-					{
+					//#pragma omp critical(emisor)
+					//{
 						//cout<<"entra hilo 4 en reg critical"<<"\n cola remove size: "<<cola_de_Remove.size()<<endl;
 						for(int i = 0; i < cola_de_Remove.size();++i){
 
-							char paqueteACK[PACKETSIZE];
+							char paqueteACK[15];
 							char num_request[4];
 							num_request[0] = cola_de_Remove[i].paquete[3];
 							num_request[1] = cola_de_Remove[i].paquete[2];
@@ -464,21 +478,21 @@ int main(int argc, char * argv[]){
 							int * nombre = reinterpret_cast<int*>(ID);
 
 							naranja.remove_ACK(paqueteACK,*nombre,*num_req);
-							send(cola_de_Remove[i].IP,cola_de_Remove[i].port,paqueteACK);
+							send(cola_de_Remove[i].IP,cola_de_Remove[i].port,paqueteACK,15);
 							//tcpl.send(cola_de_Remove[i].IP,cola_de_Remove[i].port,paqueteACK);
 						}
 
-					}
-				}	
+					//}
+				}
 
 			}else if(hilo == 5 ){
 				while(1){
-					#pragma omp critical(emisor)
-					{
+				//	#pragma omp critical(emisor)
+				//	{
 						//cout<<"entra hilo 5 en reg critical"<<endl;
 						for(int i = 0; i < cola_de_ConfirmPos.size();++i){
 
-							char paqueteACK[PACKETSIZE];
+							char paqueteACK[15];
 							char num_request[4];
 							num_request[0] = cola_de_ConfirmPos[i].paquete[3];
 							num_request[1] = cola_de_ConfirmPos[i].paquete[2];
@@ -492,12 +506,12 @@ int main(int argc, char * argv[]){
 							int * nombre = reinterpret_cast<int*>(ID);
 
 							naranja.confirm_pos_ACK(paqueteACK,*num_req,*nombre);
-							send(cola_de_ConfirmPos[i].IP,cola_de_ConfirmPos[i].port,paqueteACK);
+							send(cola_de_ConfirmPos[i].IP,cola_de_ConfirmPos[i].port,paqueteACK,15);
 							//tcpl.send(cola_de_ConfirmPos[i].IP,cola_de_ConfirmPos[i].port,paqueteACK);
 						}
 
-					}
-				}	
+					//}
+				}
 
 			}
 
@@ -512,9 +526,9 @@ int main(int argc, char * argv[]){
 
     /* cleanup semaphores */
     sem_unlink (SEM_NAME);
-    sem_close(mutex_env);
+    sem_close(mutex_memEnv);
     sem_unlink (SEM_NAME2);
-    sem_close(mutex_recv);
+    sem_close(mutex_memRecv);
     /* shared memory detach */
     shmdt(envio);
     shmctl(shmid1, IPC_RMID, 0);

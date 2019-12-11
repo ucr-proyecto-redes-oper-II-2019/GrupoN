@@ -13,8 +13,8 @@ void Bolsa::copy(char * dest, char * vector,int size){
 bool Bolsa::insertar(char * IP, unsigned short port, char paquete[], int tipo_bolsa, int tam){
     request packet;
     packet.size = tam;
-    packet.IP = IP;
-    packet.paquete = paquete;
+    copy(packet.IP, IP, 15);
+    copy(packet.paquete,paquete,tam);
     packet.port = port;
 
     if(tipo_bolsa == 1){
@@ -29,8 +29,7 @@ bool Bolsa::insertar(char * IP, unsigned short port, char paquete[], int tipo_bo
     return false;
 }
 
-
-int Bolsa::requestIguales(request paqueteACK, request paqueteINFO){
+bool Bolsa::requestIguales(request paqueteACK, request paqueteINFO){
     char numSecACK[5];
     numSecACK[0] = paqueteACK.paquete[1];
     numSecACK[1] = paqueteACK.paquete[2];
@@ -51,12 +50,11 @@ int Bolsa::requestIguales(request paqueteACK, request paqueteINFO){
     }
 
     return 0;
-
 }
 
-int Bolsa::borrar_confirmado(request paqueteACK){
+bool Bolsa::borrar_confirmado(request paqueteACK){
     for(int i = 0; i < this->bolsa.size(); ++i){
-        if( requestIguales(paqueteACK,bolsa.at(i)) ){
+        if( requestIguales(paqueteACK,bolsa[i]) ){
             bolsa.erase (bolsa.begin()+i);
             return 1;
         }
@@ -65,15 +63,17 @@ int Bolsa::borrar_confirmado(request paqueteACK){
 }
 
 void Bolsa::borrar_por_ttl(int i){
-    bolsa[i].ttl--;
     if(bolsa[i].ttl == 0){
         bolsa.erase(bolsa.begin()+i);
     }
 }
 
-void Bolsa::borrar_recibido(int i){
-    bolsa.erase(bolsa.begin()+i);
+void Bolsa::borrar_recibido(int indice){
+    bolsa.erase(bolsa.begin()+indice);
+}
 
+void Bolsa::decrement_ttl(int indice){
+    bolsa[indice].ttl--;
 }
 
 int Bolsa::get_size(){
@@ -81,5 +81,5 @@ int Bolsa::get_size(){
 }
 
 request Bolsa::get_paquete(int indice){
-    return bolsa.at(indice);
+    return bolsa[indice];
 }

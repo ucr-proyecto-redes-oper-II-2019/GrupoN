@@ -4,11 +4,11 @@
 #define REQMAXSIZE 1020
 
 struct request{
-    char * IP = nullptr;
+    char IP[15];
     unsigned short port = 0;
     int ttl = 0;
     int size = 0;
-    char * paquete = nullptr;
+    char paquete[REQMAXSIZE];
 };
 
 #endif // REQUEST_H

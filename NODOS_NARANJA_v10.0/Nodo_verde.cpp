@@ -78,15 +78,15 @@ void send(char * IP, int port, char * req_paquete){
 
 void randstring(char randomString[],int length) {
 
-    static char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";        
+    static char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
-    for (int n = 0;n < length;n++) {            
+    for (int n = 0;n < length;n++) {
         int key = rand() % (int)(sizeof(charset) -1);
         randomString[n] = charset[key];
     }
 
     randomString[length] = '\0';
-    
+
 }
 
 
@@ -107,8 +107,8 @@ void intHandler(int senal) {
 }
 
 //ARGUMENTOS
-//argv[1] = IP del naranja al que quiere conectarse 
-//argv[2] = puerto del naranja al que quiere conectarse 
+//argv[1] = IP del naranja al que quiere conectarse
+//argv[2] = puerto del naranja al que quiere conectarse
 int main(int argc, char * argv[]){
 	//cada naranja tiene que tener semaforos unicos, no puede tener el mismo a otro naranja, cuando se llama al proceso de tcpl este si lo tienen que compartir entonces el nombre se pasa por param
 	srand(time(0));
@@ -139,7 +139,7 @@ int main(int argc, char * argv[]){
     N_verde verde;
     char puerto[(sizeof(int)*8+1)];
     sprintf(puerto,"%d",verde.getPuerto());
-   
+
 
     char key_env[(sizeof(int)*8+1)];
     sprintf(key_env,"%d",key_envio);
@@ -150,29 +150,28 @@ int main(int argc, char * argv[]){
 
     pid_t pid = fork();
     if (pid == 0) {
-    
-        char * ls_args[] = { "./tcpl",key_env,key_rcv,"20",puerto,SEM_NAME,SEM_NAME2,NULL};
-        system("g++ tcplite.cpp main_tcpl.cpp bolsa.cpp -pthread -fopenmp -Wno-write-strings -std=c++11 -o tcpl");
+
+        char * ls_args[] = { "./tcpl2",key_env,key_rcv,"20",puerto,SEM_NAME,SEM_NAME2,NULL};
+        system("g++ tcplite.cpp main_tcpl.cpp bolsa.cpp -pthread -fopenmp -Wno-write-strings -std=c++11 -o tcpl2");
         execvp(ls_args[0],ls_args);
 
     }else{
-
     	vector<request> cola_de_FileExists;
-		vector<request> cola_de_FileComplete;
-	  	vector<request> cola_de_LocateFile;
-		vector<request> cola_de_RemoveFile;
-		vector<request> cola_de_PutFile;
-		vector<request> cola_de_GetFile;
+		  vector<request> cola_de_FileComplete;
+	    vector<request> cola_de_LocateFile;
+		  vector<request> cola_de_RemoveFile;
+		  vector<request> cola_de_PutFile;
+		  vector<request> cola_de_GetFile;
 	  	vector<request> cola_de_Exec;
 	  	vector<request> cola_de_ExecStop;
     	vector<request> cola_de_ConnectACK; //se van a recibir varios paquetes con esta solicitud por lo que se necesita una cola
 
- 		char * IPNaranja = argv[1];
- 		int puertoNaranja = atoi(argv[2]);
-    	char paquete[PACKETSIZE];
-		verde.connect(paquete);
-		send(IPNaranja,puertoNaranja,paquete);    	   
-        cout<<"en verde, connect enviado"<<endl;
+   		char * IPNaranja = argv[1];
+   		int puertoNaranja = atoi(argv[2]);
+      char paquete[PACKETSIZE];
+  		verde.connect(paquete);
+  		send(IPNaranja,puertoNaranja,paquete);
+      cout<<"en verde, connect en bolsa"<<endl;
 
 
 		#pragma omp parallel num_threads(6) shared(mutex_recv,mutex_env,cola_de_FileExists,cola_de_FileComplete,cola_de_LocateFile,\
@@ -187,7 +186,7 @@ int main(int argc, char * argv[]){
 
 				request req;
 
-				sem_wait(mutex_recv);
+				sem_wait(mutex_env);
 				if(recibo->lleno){
 					req.port = recibo->request.port;
 					req.IP = recibo->request.IP;
@@ -195,7 +194,7 @@ int main(int argc, char * argv[]){
 					recibo->lleno = 0;
 
 				}
-				sem_post(mutex_recv);
+				sem_post(mutex_env);
 
                 if (req.port){
                     int * soliciud = reinterpret_cast<int*>(&req.paquete[6]);
@@ -207,20 +206,20 @@ int main(int argc, char * argv[]){
                     }
 
                 }
-				
+
 
 			}else if(hilo == 1){
-				while(1){
-					#pragma omp critical(emisor)
-					{
-						for(int i = 0; i < cola_de_ConnectACK.size();++i){
+			//	while(1){
+				//	#pragma omp critical(emisor)
+					//{
+						//for(int i = 0; i < cola_de_ConnectACK.size();++i){
 
-							verde.llenarDatos(cola_de_ConnectACK[i].paquete);
+						//	verde.llenarDatos(cola_de_ConnectACK[i].paquete);
 
-						}
+					//	}
 
-					}
-				}
+					//}
+				//}
 
 
 			}
@@ -229,7 +228,7 @@ int main(int argc, char * argv[]){
 
 	  	}
 
-	  
+
 
 
     }//else del fork
