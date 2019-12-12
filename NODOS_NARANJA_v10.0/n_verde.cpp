@@ -12,7 +12,7 @@ N_verde::~N_verde(){
 }
 
 //4B 2B 1B 2B 2B 2B 2B
-void N_verde:: armar_paquete(char * paquete, int num_req, int respuesta, 
+void N_verde:: armar_paquete(char * paquete, int num_req, int respuesta,
                             int num_tarea, int num_prioridad, int fuente,
                             int destino, int ttl){
     char * r;
@@ -24,9 +24,9 @@ void N_verde:: armar_paquete(char * paquete, int num_req, int respuesta,
 
     char * x;
     x = reinterpret_cast<char*>(&respuesta);
-    paquete[4] = x[1]; 
+    paquete[4] = x[1];
     paquete[5] = x[0];
-           
+
 
     char * t;
     t = reinterpret_cast<char*>(&num_tarea);
@@ -42,7 +42,7 @@ void N_verde:: armar_paquete(char * paquete, int num_req, int respuesta,
         q = reinterpret_cast<char*>(&ttl);
         paquete[9] = q[1];
         paquete[10] = q[0];
-        
+
         q = reinterpret_cast<char*>(&fuente);
         paquete[11] = q[1];
         paquete[12] = q[0];
@@ -60,14 +60,14 @@ void N_verde:: armar_paquete(char * paquete, int num_req, int respuesta,
 void N_verde::connect(char * paquete){
 	int num_req = rand();
     int num_tarea = 200;
-    armar_paquete(paquete,num_req,1,num_tarea,0,-1,-1,-1); //revisar
+    armar_paquete(paquete,num_req,1,num_tarea,0);
 
 }
 
 void N_verde::disconnect(char * paquete){
 	int num_req = rand();
     int num_tarea = 215;
-    armar_paquete(paquete,num_req,this->nombre,num_tarea,0,-1,-1,-1); //revisar
+    armar_paquete(paquete,num_req,this->nombre,num_tarea,0);
 }
 
 //COMUNICACION ENTRE VERDES
@@ -94,15 +94,15 @@ void N_verde::greet_neighbor_ACK(char * paquete, int num_req){
 
 	armar_paquete(paquete,num_req,0,101,0,-1,-1,-1);
 
-} 
+}
 
 
 void N_verde::file_exists(char * paquete, char * nombre){
 	int num_req = rand();
     int num_tarea = 102;
-    int respuesta = -1; //Pregunta por cualquier segmento 
+    int respuesta = -1; //Pregunta por cualquier segmento
 
-   // armar_paquete(paquete,num_req,respuesta,num_tarea,/*tamano del nombre??*/);	
+   // armar_paquete(paquete,num_req,respuesta,num_tarea,/*tamano del nombre??*/);
 
 
 }
@@ -181,23 +181,5 @@ void N_verde::exec_ACK(char * paquete,int num_req){
 }
 
 void N_verde::exec_stop_ACK(char * paquete,int num_req){
-
-}
-
-int N_verde::getPuerto(){
-    return this->puerto;
-
-}
-
-
-void N_verde::llenarDatos(char * paquete){
-
-    char ID[2];
-    ID[0] = paquete[5];
-    ID[1] = paquete[4];
-    int * id = reinterpret_cast<int*>(ID);
-    this->nombre = *id;
-
-
 
 }

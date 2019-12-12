@@ -25,10 +25,10 @@ private:
     int puerto;
     int nombre; //ID
     vector<Nodos> vecinos;
-    vector<char*> files; //primeros dos bytes tienen el numero de segmento, 
+    vector<char*> files; //primeros dos bytes tienen el numero de segmento,
 
-    void armar_paquete(char * paquete, int num_req, int respuesta, 
-                        int num_tarea, int num_prioridad, int fuente, 
+    void armar_paquete(char * paquete, int num_req, int respuesta,
+                        int num_tarea, int num_prioridad, int fuente,
                         int destino, int ttl);
 
 public:
@@ -41,7 +41,7 @@ public:
 
 	//de verde a verde:
 	void greet_neighbor(char * paquete);
-	void greet_neighbor_ACK(char * paquete, int num_req); 
+	void greet_neighbor_ACK(char * paquete, int num_req);
 	void file_exists(char * paquete, char * nombre);
 	void file_exists_ACK(char * paquete, char * nombre);
 	void locate_file(char * paquete);
@@ -62,9 +62,7 @@ public:
 	void exec_ACK(char * paquete,int num_req);
 	void exec_stop_ACK(char * paquete,int num_req);
 
-	int getPuerto();
-	void llenarDatos(char*); //despues de hacer connect llena con los datos que le proporciona el naranja
-    
+
 
 };
-#endif     
+#endif
