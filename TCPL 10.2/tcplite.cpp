@@ -20,18 +20,22 @@ TCPLite::TCPLite(int bolsas_len, int port){
         perror("bind failed");
         exit(EXIT_FAILURE);
     }
+
+    if(sem_init(&critical_zone, 0, 1)!=0){
+        perror("semaphore init failed");
+        exit(EXIT_FAILURE);
+    }
 }
 
 TCPLite::~TCPLite(){
     closeSocket();
+    sem_destroy(&critical_zone);
 }
 
 /***************************** LLAMADOS EXTERNOS *****************************/
 
 void TCPLite::send_timeout(){
     while (1) {
-        critical.lock();
-
         clock_t inicio;
         double tiempo;
         inicio = clock();
@@ -41,22 +45,25 @@ void TCPLite::send_timeout(){
                 break;
             }
         }
+
+        sem_wait(&critical_zone);
         for(int i = 0; i < bolsa_send->get_size(); i++){
             request req = bolsa_send->get_paquete(i);
+            char pack[req.size];
+            copy(pack,req.paquete, req.size);
             cliaddr_send.sin_port = htons(req.port);
             cliaddr_send.sin_addr.s_addr = inet_addr(req.IP);
-            sendto(sockfd,(const char*)(req.paquete),(unsigned long)(req.size),
+            sendto(sockfd,(const char*)(pack),(unsigned long)(req.size),
                    MSG_CONFIRM, (const struct sockaddr *)(&cliaddr_send), sizeof(cliaddr_send));
             bolsa_send->borrar_por_ttl(i);
         }
 
-        critical.unlock();
-        usleep(1);
+        sem_post(&critical_zone);
     }
 }
 
-bool TCPLite::send(char * IP, unsigned short port, char paquete[], int tam){
-    critical.lock();
+bool TCPLite::send(char * IP, unsigned short port, char * paquete, int tam){
+    sem_wait(&critical_zone);
 
     char temp[tam];
     copy(temp,paquete,tam);
@@ -75,13 +82,13 @@ bool TCPLite::send(char * IP, unsigned short port, char paquete[], int tam){
 
     bool x = bolsa_send->insertar(IP,port,pack,1, tam+HEADERSIZE);
 
-    critical.unlock();
+    sem_post(&critical_zone);
     return x;
 }
 
 void TCPLite::receive(){
     while (1) {
-        critical.lock();
+        sem_wait(&critical_zone);
 
         socklen_t len;
         char paquete[REQMAXSIZE];
@@ -89,55 +96,54 @@ void TCPLite::receive(){
         int bytes_recv = recvfrom(sockfd,static_cast<char *>(paquete), REQMAXSIZE, MSG_WAITALL,
                                   reinterpret_cast<struct sockaddr *>(&cliaddr_recv), &len);
         cout << "SE RECIBIO ALGO\n";
-        request r;
-        r.IP = inet_ntoa(cliaddr_recv.sin_addr);
-        r.port = ntohs(cliaddr_recv.sin_port);
-        r.paquete = new char[bytes_recv];
+        request req;
+        char * ip_recv = inet_ntoa(cliaddr_recv.sin_addr);
+        copy(req.IP, ip_recv, strlen(ip_recv));
+        req.port = ntohs(cliaddr_recv.sin_port);
         for(int i = 0; i < bytes_recv;i++){
-            r.paquete[i] = paquete[i];
+            req.paquete[i] = paquete[i];
         }
-        int insertado = -1;
+        bool insertado = false;
         if(paquete[0] == '\0'){
-            insertado = bolsa_receive->insertar(r.IP,r.port,r.paquete, 0, bytes_recv);
-            for (int i = 0; i < 5; ++i) {
+            insertado = bolsa_receive->insertar(req.IP,req.port,req.paquete, 0, bytes_recv);
+            for (int i = 0; (i < HEADERSIZE) && (insertado); ++i) {
                 cout<<"mandando ACK\n";
-                char ack[5];
+                char ack[HEADERSIZE];
                 ack[0] = static_cast<char>(1);
                 ack[1] = paquete[1];
                 ack[2] = paquete[2];
                 ack[3] = paquete[3];
                 ack[4] = paquete[4];
-                send_ACK(r.IP,r.port,ack,bytes_recv);
+                send_ACK(req.IP,req.port,ack,bytes_recv);
                 usleep(1);
             }
         }else{
-            bolsa_send->borrar_confirmado(r);
+            bolsa_send->borrar_confirmado(req);
         }
 
-        critical.unlock();
-        usleep(1);
+        sem_post(&critical_zone);
     }
 }
 
 int TCPLite::getPaqueteRcv(request * req) {
-    critical.lock();
+    sem_wait(&critical_zone);
+
     cout<<"bolsa_receive size: "<<bolsa_receive->get_size()<<endl;
     for (int i = 0; i < bolsa_receive->get_size(); i++) {
         if(bolsa_receive->get_paquete(i).paquete[0] == '\0' ){
-            char pack[bolsa_receive->get_paquete(i).size-HEADERSIZE];
-            req->paquete = pack;
-            copyPaq(req->paquete,bolsa_receive->get_paquete(i).paquete,HEADERSIZE, bolsa_receive->get_paquete(i).size-HEADERSIZE);
+            int len = bolsa_receive->get_paquete(i).size-HEADERSIZE;
+            req->size = len;
+            copyPaq(req->paquete,bolsa_receive->get_paquete(i).paquete,HEADERSIZE, len);
             req->port = bolsa_receive->get_paquete(i).port;
-            req->IP = bolsa_receive->get_paquete(i).IP;
-            req->size = bolsa_receive->get_paquete(i).size-HEADERSIZE;
+            copy(req->IP, bolsa_receive->get_paquete(i).IP, strlen(bolsa_receive->get_paquete(i).IP));
             bolsa_receive->borrar_recibido(i);
 
-            critical.unlock();
+            sem_post(&critical_zone);
             return 1;
         }
     }
 
-    critical.unlock();
+    sem_post(&critical_zone);
     return 0;
 }
 
@@ -172,6 +178,5 @@ void TCPLite::closeSocket(){
     delete bolsa_send;
     delete bolsa_receive;
     close(sockfd);
-    cout<<"closed socket\n";
 }
 

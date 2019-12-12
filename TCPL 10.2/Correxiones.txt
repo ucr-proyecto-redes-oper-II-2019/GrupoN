@@ -1,0 +1,7 @@
+Request:
+    Cambiar el *ip a ip[15]
+
+TCPLite:
+    obtener el tamaño del ip en el send con strlen
+    limpiar el destino del ip con '\0' y copiar el
+    contenido en el rango del tamaño.

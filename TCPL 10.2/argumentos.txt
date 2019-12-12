@@ -1,0 +1,3 @@
+    ./ejecutable    [tamaño de blosas] [puerto para recibir]
+                    [key de la memoria compartida] [nombre del semáforo de envío]
+                    [nombre del semáforo de recibo]

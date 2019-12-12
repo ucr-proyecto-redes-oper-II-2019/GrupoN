@@ -28,3 +28,7 @@ HEADERS += \
     Request.h \
     bolsa.h \
     tcplite.h
+
+DISTFILES += \
+    Correxiones.txt \
+    argumentos.txt

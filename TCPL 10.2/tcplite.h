@@ -10,14 +10,19 @@
 #include <cstdio>
 #include <unistd.h>
 #include <mutex>
+#include <semaphore.h>
 #include <unistd.h>
 
 class TCPLite{
 private:
-    int sockfd;
-    mutex critical;
-    struct sockaddr_in servaddr, cliaddr_send,cliaddr_recv;
-    Bolsa * bolsa_send, * bolsa_receive;
+    int sockfd; ///< Identificador de socket.
+    sem_t critical_zone; ///< Semáforo para controlar los accesos a memoria crítica.
+    sockaddr_in servaddr; ///< Socket para el asociar como "servidor".
+    sockaddr_in cliaddr_send; ///< Socket para obtener envío de archivos.
+    sockaddr_in cliaddr_recv; ///< Socket para obtener la información de los archivos entrantes.
+    Bolsa * bolsa_send; ///< Bolsa para el envío de paquetes.
+    Bolsa * bolsa_receive; ///< Bolsa para el recibo de paquetes.
+
     /**
      * @brief copy copia el contenido del fuente en el destino,
      * requiere que el tamaño del destino sea mayor o igual al
@@ -31,6 +36,7 @@ private:
     void copy(char * dest,char * source,int range);
 
 public:
+
     /**
      * @brief TCPLite constructor donde se define el tamaño de las bolsas
      * y el puerto por el cuál se va a recibir la información.
@@ -39,6 +45,7 @@ public:
      * información
      */
     TCPLite(int bolsas_len, int port);
+
     /**
      * @brief ~TCPLite destructor de la clase, cierra los sockets y
      * elimina la memoria creada.
@@ -52,6 +59,7 @@ public:
      * de los request que aún contengan ttl positivo y lo decrementa.
      */
     void send_timeout();
+
     /**
      * @brief send inserta la los datos recibidos como una solicitud
      * y la inserta en la bolsa de envío.
@@ -61,12 +69,14 @@ public:
      * @param tam tamaño en bytes del paquete.
      * @return true si logró insertarlo y false si no lo logró.
      */
-    bool send(char *IP, unsigned short port, char paquete[], int len);
+    bool send(char *IP, unsigned short port, char *paquete, int len);
+
     /**
      * @brief receive recive un paquete desde la red inserta en la bolsa de recibidos.
      * @return
      */
     void receive();
+
     /**
      * @brief getPaqueteRcv saca de la bolsa de recibidos y lo asigna a la solicitud.
      * @param req solicitud de retorno.
@@ -85,11 +95,13 @@ public:
      * @return
      */
     int send_ACK(char *IP,  unsigned short  port, char paquete[], int tam);
+
     /**
      * @brief getBolsaSize obtiene el tamaño de las bolsas de envío.
      * @return el tamaño de las bolsas.
      */
     int getBolsaSize();
+
     /**
      * @brief copyPaq copia solo los datos del paquete sin el header
      * de TCPLite.
@@ -99,6 +111,7 @@ public:
      * @param size tamaño del paquete a copiar.
      */
     void copyPaq(char * dest, char * source,int indice,int size);
+
     /**
      * @brief closeSocket cierra los sockets.
      */

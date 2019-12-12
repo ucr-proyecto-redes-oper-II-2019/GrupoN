@@ -10,11 +10,18 @@ void Bolsa::copy(char * dest, char * vector,int size){
     }
 }
 
-bool Bolsa::insertar(char * IP, unsigned short port, char paquete[], int tipo_bolsa, int tam){
+void Bolsa::clear(char *source, int size){
+    for(int i = 0; i < size; i++){
+        source[i]='\0';
+    }
+}
+
+bool Bolsa::insertar(char * IP, unsigned short port, char * paquete, int tipo_bolsa, int tam){
     request packet;
     packet.size = tam;
-    packet.IP = IP;
-    packet.paquete = paquete;
+    clear(packet.IP, strlen(IP));
+    copy(packet.IP, IP, strlen(IP));
+    copy(packet.paquete, paquete, tam);
     packet.port = port;
 
     if(tipo_bolsa == 1){
