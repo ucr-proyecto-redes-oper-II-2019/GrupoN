@@ -264,7 +264,7 @@ void N_verde::llenarDatos(char * paquete,int size){
 			cout<<"mi nombre es:" << this->nombre<< " mi vecino es: " << nodo.nombre << " IP: " << IP_vecino << " puerto: " << puerto_num<<endl;
 			vecinos.push_back(nodo);
 		}else{
-			cout<<"mi nombre es:" << this->nombre << "no tengo vecinos instanciados aha ha pero si tuviera se llamaria: " << nodo.nombre << endl;
+			cout<<"mi nombre es: " << this->nombre << " no tengo vecinos instanciados aha ha pero si tuviera se llamaria: " << nodo.nombre << endl;
 		}
 
 		/*if(puerto_num){

@@ -288,10 +288,11 @@ int N_naranja::encontrar_nombre(char * IP,int puerto, vector<Nodos> * vecinos, i
       }
     }
 
+    int nombre_instanciado = grafo_verdes[ind].nombre;
     for (int i = 0; i < grafo_verdes.size(); i++) {
-      cout << "vecinos.size " << grafo_verdes[i].vecinos.size();
+      cout << "vecinos.size " << grafo_verdes[i].vecinos.size()<<endl;
       for(int j = 0; j < grafo_verdes[i].vecinos.size(); ++j){
-        if((grafo_verdes[i].nombre ==  grafo_verdes[i].vecinos[j].nombre) && grafo_verdes[i].puerto){
+        if((nombre_instanciado ==  grafo_verdes[i].vecinos[j].nombre) && grafo_verdes[ind].puerto){
           cout << "se instancia vecino" << grafo_verdes[i].nombre << " con IP " <<IP << ":" << puerto <<endl;
           grafo_verdes[i].vecinos[j].IP = IP;
           grafo_verdes[i].vecinos[j].puerto = puerto;
@@ -338,7 +339,7 @@ void N_naranja::fill_neighbour(char * paquete, int id, int ip,  short puerto, in
     r = reinterpret_cast<char*>(&id);
     paquete[15] = r[1];
     paquete[16] = r[0];
-
+    cout << "size en fill neigh " <<size;
     if(size == 17){
       return;
     }
@@ -403,13 +404,17 @@ void N_naranja::connect_ACK(vector<request> * ACK, int puerto,char * IP, int num
             ip = inet_addr(vtr[i].IP);
             cout << "IP transformado" << endl;
             port = htons(vtr[i].puerto);
-            req.port = puerto;
+            copiar(vtr[i].IP,req.IP,strlen(vtr[i].IP));
+            req.port = vtr[i].puerto;
+            fill_neighbour(req.paquete, vtr[i].nombre, ip, port, req.size);
             cout<<"aqui1"<<endl;
+        }else{
+          cout<<"aqui2"<<endl;
+          req.port = puerto;
+          req.size = size;
+          copiar(IP, req.IP,strlen(IP));
         }
-        cout<<"aqui2"<<endl;
-        req.port = puerto;
-        req.size = size;
-        copiar(IP, req.IP,strlen(IP));
+
         fill_header(req.paquete,num_request,num_ID,tarea);
         cout<<"aqui3"<<endl;
         fill_neighbour(req.paquete, vtr[i].nombre, ip, port, req.size);
@@ -537,4 +542,8 @@ int N_naranja::getSizeGrafo(){
 }
 int N_naranja::pedirNombreGrafo(int indice){
   return grafo_verdes[indice].nombre;
+}
+
+vector<N_verde>* N_naranja::getGrafoVerdes(){
+    return &grafo_verdes;
 }

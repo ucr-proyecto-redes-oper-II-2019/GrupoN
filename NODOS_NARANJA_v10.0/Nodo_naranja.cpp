@@ -431,6 +431,27 @@ int main(int argc, char * argv[]){
                             send(vecinos_naranja[j].IP,vecinos_naranja[j].puerto,confirm_pos_paquete,tamCP);
                             cout << "se pone un confirm pos en mem compartida" <<endl;
                             quitar_no_disponibles(&IDs_verdes_disponibles,num_ID_verde);
+                            int ind;
+                            for(int k = 0; k < naranja.getGrafoVerdes()->size(); k++){
+                              if( naranja.getGrafoVerdes()->at(k).nombre == num_ID_verde){
+                                ind = k;
+                                copiar(cola_de_Connect[i].IP, naranja.getGrafoVerdes()->at(k).IP, strlen(cola_de_Connect[i].IP));
+                                naranja.getGrafoVerdes()->at(k).puerto =cola_de_Connect[j].port;
+                                break;
+                              }
+                            }
+
+                            int nombre_instanciado = naranja.getGrafoVerdes()->at(ind).nombre;
+                            for (int k = 0; k < naranja.getGrafoVerdes()->size(); k++) {
+                              cout << "vecinos.size " << naranja.getGrafoVerdes()->at(k).vecinos.size()<<endl;
+                              for(int x = 0; x < naranja.getGrafoVerdes()->at(k).vecinos.size(); ++x){
+                                if((nombre_instanciado ==  naranja.getGrafoVerdes()->at(k).vecinos[x].nombre) && naranja.getGrafoVerdes()->at(ind).puerto){
+                                  cout << "se instancia vecino" <<naranja.getGrafoVerdes()->at(k).nombre << " con IP " <<cola_de_Connect[i].IP << ":" << cola_de_Connect[i].port <<endl;
+                                   naranja.getGrafoVerdes()->at(k).vecinos[x].IP = cola_de_Connect[i].IP;
+                                   naranja.getGrafoVerdes()->at(k).vecinos[x].puerto = cola_de_Connect[i].port;
+                                }
+                              }
+                            }
                         }
                         int arreglo_confirm_pos[vecinos_naranja.size()];
                         for(int j = 0; j < vecinos_naranja.size(); j++){ //cuando esta en -1 significa que no han llegado todos
@@ -471,6 +492,7 @@ int main(int argc, char * argv[]){
                                             if(numID == *temp){
                                                 cout << "se marco con un 1 en confirm pos" <<endl;
                                                 arreglo_confirm_pos[w] = 1;
+
                                                 cola_de_ConfirmPosACK.erase(cola_de_ConfirmPosACK.begin() + j);
                                                 //se saca el request de la cola
                                             }else{
@@ -625,6 +647,49 @@ int main(int argc, char * argv[]){
                         cout << "confirm pos recibido" << *nombre <<endl;
                         naranja.confirm_pos_ACK(paqueteACK,*num_req,*nombre);
                         send(cola_de_ConfirmPos[i].IP,cola_de_ConfirmPos[i].port,paqueteACK,15);
+
+                        char ip_vecino[4];
+                  			ip_vecino[0] = paquete[18];
+                  			ip_vecino[1] = paquete[17];
+                  			ip_vecino[2] = paquete[16];
+                  			ip_vecino[3] = paquete[15];
+                  			int * ip_vecino_num = (int*)(ip_vecino);
+                  			int x = *ip_vecino_num;
+                  			struct sockaddr_in z;
+                  			z.sin_addr.s_addr = x;
+                  			char * IP_vecino = inet_ntoa(z.sin_addr);
+
+
+                  			char puerto_vecino[2];
+                  			puerto_vecino[0] = paquete[20];
+                  			puerto_vecino[1] = paquete[19];
+                  			/*puerto_vecino[2] = '\0';
+                  			puerto_vecino[3] = '\0';*/
+                  			short * puerto_vecino_num = (short*)(&puerto_vecino);
+                  			short puerto_num = *puerto_vecino_num;
+
+                        cout << "va a entrar" <<endl;
+                        int ind;
+                        for(int k = 0; k < naranja.getGrafoVerdes()->size(); k++){
+                          if( naranja.getGrafoVerdes()->at(k).nombre == *nombre){
+                            ind = k;
+                            copiar(IP_vecino, naranja.getGrafoVerdes()->at(k).IP, strlen(IP_vecino));
+                            naranja.getGrafoVerdes()->at(k).puerto =puerto_num;
+                            break;
+                          }
+                        }
+                        cout << "ind asignado" <<endl;
+                        int nombre_instanciado = naranja.getGrafoVerdes()->at(ind).nombre;
+                        for (int k = 0; k < naranja.getGrafoVerdes()->size(); k++) {
+                          cout << "vecinos.size " << naranja.getGrafoVerdes()->at(k).vecinos.size()<<endl;
+                          for(int j = 0; j < naranja.getGrafoVerdes()->at(k).vecinos.size(); ++j){
+                            if((nombre_instanciado ==  naranja.getGrafoVerdes()->at(k).vecinos[j].nombre) && naranja.getGrafoVerdes()->at(ind).puerto){
+                              cout << "se instancia vecino" <<naranja.getGrafoVerdes()->at(k).nombre << " con IP " <<IP_vecino << ":" << puerto_num <<endl;
+                               naranja.getGrafoVerdes()->at(k).vecinos[j].IP = IP_vecino;
+                               naranja.getGrafoVerdes()->at(k).vecinos[j].puerto = puerto_num;
+                            }
+                          }
+                        }
                         quitar_no_disponibles(&IDs_verdes_disponibles,*nombre);
                         cola_de_ConfirmPos.erase(cola_de_ConfirmPos.begin()+i);
                         //tcpl.send(cola_de_ConfirmPos[i].IP,cola_de_ConfirmPos[i].port,paqueteACK);

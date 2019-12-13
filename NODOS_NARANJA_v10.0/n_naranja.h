@@ -66,6 +66,7 @@ public:
     int getSizeGrafo();
     int pedirNombreGrafo(int);
     vector<Nodos> getNaranjas();
+    vector<N_verde> *getGrafoVerdes();
 };
 
 #endif // N_NARANJA_H

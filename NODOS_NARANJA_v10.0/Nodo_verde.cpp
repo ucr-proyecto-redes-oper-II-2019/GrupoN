@@ -320,17 +320,3 @@ int main(int argc, char * argv[]){
   return 0;
 
 }
-/*
-Compilación:
-    Todos los archivos deben estar en la misma carpeta.
-    Nodos verdes:
-        g++ Nodo_verde.cpp n_verde.cpp -fopenmp -pthread -o verde
-    Nodos Naranjas:
-        g++ Nodo_naranja.cpp n_naranja.cpp -pthread -o naranja -fopenmp
-
-Ejecución:
-    Naranjas:
-        ./naranja [número de naranja]
-    Verdes:
-        ./verde [IP del naranja a conectarse] [Puerto del naranja a conectarse] [IP propio] [Puerto propio]
-*/
