@@ -149,7 +149,7 @@ void N_naranja::request_pos_ACK(char *ACK, int num_req,int num_ID, int num_prior
 }
 
 int N_naranja::confirm_pos(char *paquete, int num_ID, int num_req, char * IP, int port){
-    esperando_request_pos_ACK = 0; //si se esta mandando un confirm_pos significa que ya no se esta esperando ningun request_pos_ACK
+    //esperando_request_pos_ACK = 0; //si se esta mandando un confirm_pos significa que ya no se esta esperando ningun request_pos_ACK
     char * r;
     r = reinterpret_cast<char*>(&num_req);
     paquete[0] = r[3];
@@ -276,12 +276,26 @@ int N_naranja::encontrar_nombre(char * IP,int puerto, vector<Nodos> * vecinos, i
      * Busca entre el grafo el nodo al que corresponde el nombre y guarda el índice
      */
     int ind;
+
+
+
     for(int i = 0; i < grafo_verdes.size(); i++){
       if(grafo_verdes[i].nombre == numID){
         ind = i;
-        copiar(IP,grafo_verdes[numID].IP, strlen(IP));
-        grafo_verdes[numID].puerto = puerto;
+        copiar(IP,grafo_verdes[i].IP, strlen(IP));
+        grafo_verdes[i].puerto = puerto;
         break;
+      }
+    }
+
+    for (int i = 0; i < grafo_verdes.size(); i++) {
+      cout << "vecinos.size " << grafo_verdes[i].vecinos.size();
+      for(int j = 0; j < grafo_verdes[i].vecinos.size(); ++j){
+        if((grafo_verdes[i].nombre ==  grafo_verdes[i].vecinos[j].nombre) && grafo_verdes[i].puerto){
+          cout << "se instancia vecino" << grafo_verdes[i].nombre << " con IP " <<IP << ":" << puerto <<endl;
+          grafo_verdes[i].vecinos[j].IP = IP;
+          grafo_verdes[i].vecinos[j].puerto = puerto;
+        }
       }
     }
 
@@ -292,6 +306,7 @@ int N_naranja::encontrar_nombre(char * IP,int puerto, vector<Nodos> * vecinos, i
      */
      cout << "grafo_verdes[ind].vecinos.size(): " <<grafo_verdes[ind].vecinos.size();
     for (int j = 0; j < grafo_verdes[ind].vecinos.size(); j++){
+        cout << "vecinos de este guineo : " << grafo_verdes[ind].vecinos[j].nombre << endl;
         vecinos->push_back(grafo_verdes[ind].vecinos[j]);
     }
 
@@ -318,53 +333,88 @@ void N_naranja::fill_header(char * paquete, int num_request, int i_c_r, int tare
     paquete[6] = t[0];
 }
 
-void N_naranja::fill_neighbour(char * paquete, int id, unsigned int ip, unsigned short puerto, int size){
-    char * x;
-    x = reinterpret_cast<char*>(&id);
-    paquete[15] = x[1];
-    paquete[16] = x[0];
-    if (size==17){
-        return;
-    }
+void N_naranja::fill_neighbour(char * paquete, int id, int ip,  short puerto, int size){
+    char * r;
+    r = reinterpret_cast<char*>(&id);
+    paquete[15] = r[1];
+    paquete[16] = r[0];
 
+    if(size == 17){
+      return;
+    }
+    char * x;
     x = reinterpret_cast<char*>(&ip);
+    cout << "ip del vecino del verde que se esta haciendo " << ip << endl;
     paquete[17] = x[3];
     paquete[18] = x[2];
     paquete[19] = x[1];
     paquete[20] = x[0];
-    x = reinterpret_cast<char*>(&puerto);
-    paquete[21] = x[1];
-    paquete[22] = x[0];
+    char * t;
+    t = reinterpret_cast<char*>(&puerto);
+
+    paquete[21] = t[1];
+    paquete[22] = t[0];
+
+
+    char puerto_vecino[2];
+		puerto_vecino[0] = paquete[22];
+		puerto_vecino[1] = paquete[21];
+		/*puerto_vecino[2] = '\0';
+		puerto_vecino[3] = '\0';*/
+		short * puerto_vecino_num = (short*)(&puerto_vecino);
+		short puerto_num = *puerto_vecino_num;
+    cout << "puerto del vecino del verde que se esta haciendo " << puerto_num << endl;
 }
 
 void N_naranja::connect_ACK(vector<request> * ACK, int puerto,char * IP, int num_request,int num_ID){
     cout << "ENTRA A CONNECT_ACK\n";
     vector<Nodos> vtr;
     encontrar_nombre(IP,puerto, &vtr,num_ID);
+
     //asignarle IP y
-    cout << "se encontro un nombre" <<endl;
-    unsigned int ip;
-    unsigned short port;
+    int ip = -1;
+    short port = -1;
     int tarea = 201;
     for (int i = 0; i < vtr.size(); i++){
         int size = 2;
         int header_size = 15;
         size += header_size;
-        if (vtr[i].puerto != -1){
+        request req;
+        int indi;
+        /*for(int j =0 ; j < grafo_verdes.size(); j++){
+          if((grafo_verdes[j].nombre == vtr[i].nombre) && (grafo_verdes[j].puerto)){
+            indi = j;
+          }
+        }
+        for(int j = 0; j < grafo_verdes[indi].vecinos.size(); j++){
+          for(int w = 0; w < grafo_verdes.size();w++){
+            if(grafo_verdes[w].nombre == grafo_verdes[indi].vecinos[j].nombre){
+              copiar(grafo_verdes[w].IP,vtr[j].IP,strlen(grafo_verdes[w].IP));
+              copiar(grafo_verdes[w].IP,grafo_verdes[indi].vecinos[j].IP,strlen(grafo_verdes[w].IP));
+              vtr[j].puerto = grafo_verdes[w].puerto;
+              grafo_verdes[indi].vecinos[j].puerto = grafo_verdes[w].puerto;
+            }
+          }
+        }*/
+
+        if (vtr[i].puerto){
+            cout << "tengo un vecino instanciado " <<vtr[i].nombre << endl;
             size += 6;
             ip = inet_addr(vtr[i].IP);
+            cout << "IP transformado" << endl;
             port = htons(vtr[i].puerto);
+            req.port = puerto;
+            cout<<"aqui1"<<endl;
         }
-        request req;
-        req.size = size;
+        cout<<"aqui2"<<endl;
         req.port = puerto;
+        req.size = size;
         copiar(IP, req.IP,strlen(IP));
         fill_header(req.paquete,num_request,num_ID,tarea);
-
-        fill_neighbour(req.paquete, num_ID, ip, port, size);
+        cout<<"aqui3"<<endl;
+        fill_neighbour(req.paquete, vtr[i].nombre, ip, port, req.size);
 
         ACK->push_back(req);
-        cout<<"entra en condicion de connect ack"<<endl;
     }
 
 }

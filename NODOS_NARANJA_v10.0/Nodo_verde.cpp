@@ -73,19 +73,30 @@ void copiar(char * src, char * dest, int tam){
   }
 }
 
+void clear(char * vector,int size){
+  for (int i = 0; i < size; i++) {
+    vector[i] = '\0';
+  }
+}
+
 void send(char * IP, int port, char * req_paquete, int tam){
+  int puso_paquete = 0;
+  while(!puso_paquete){
     sem_wait(mutex_memEnv);
-        if(!envio->lleno){
-            copiar(IP,envio->request.IP,strlen(IP));
-            envio->request.port = port;
-            copiar(req_paquete,envio->request.paquete,tam);
-            envio->request.size = tam;
-            //cout << "esto es recibo->lleno en send1 " << recibo->lleno<<endl;
-            envio->lleno = 1;
-            //cout << "esto es recibo->lleno en send2 " << recibo->lleno<<endl;
-            cout<<"en verde, paquete en memoria comp"<<endl;
-        }
+    //cout<<"entra sem de send"<<endl;
+    if(!envio->lleno){
+      //  cout<<"entra condicion de send, pone en mem comp"<<endl;
+      copiar(IP,envio->request.IP,strlen(IP));
+      envio->request.port = port;
+      copiar(req_paquete,envio->request.paquete,tam);
+      envio->request.size = tam;
+      envio->lleno = 1;
+      puso_paquete = 1;
+      // cout<<"envio lleno en send de naranja: "<<envio->lleno<<endl;
+    }
     sem_post(mutex_memEnv);
+  }
+
 
 }
 
@@ -137,8 +148,8 @@ int main(int argc, char * argv[]){
     printf("semaforo memRecv verde %s\n",SEM_NAME2);
 
     /* MEMORIA COMPARTIDA DE ENVIO */
-    key_envio = 125844;
-    key_recibo = 1999;
+    key_envio = rand()+1;
+    key_recibo = rand()+1;
     envio = make_shm(key_envio, &shmid1);
     cout<<"keys: "<<key_envio<<" "<<key_recibo<<endl;
     /* MEMORIA COMPARTIDA DE RECIBO */
@@ -212,46 +223,76 @@ int main(int argc, char * argv[]){
 
 			if(hilo==0){
                 while(1){
-  				        request req;
-                  //cout << "esto es recibo->lleno4 " << recibo->lleno<<endl;
-                  sem_wait(mutex_memRecv);
+                    request req;
+                    //cout << "esto es recibo->lleno4 " << recibo->lleno<<endl;
+                    sem_wait(mutex_memRecv);
 
-                  if(recibo->lleno){
-                      req.port = recibo->request.port;
-                      copiar(recibo->request.IP,req.IP,15);
-                      copiar(recibo->request.paquete,req.paquete,recibo->request.size);
-                      req.size = recibo->request.size;
-                      recibo->lleno = 0;
-                      int * solicitud = reinterpret_cast<int*>(&req.paquete[6]);
-                      cout<<"solicitud: "<<*solicitud<<endl;
-                      switch(*solicitud){
-                          case CONNECT_ACK:
-                                cola_de_ConnectACK.push_back(req);
-                                cout << "Me llego un connect ack!!!!!!!!!!" <<endl;
-                          break;
+                    if(recibo->lleno){
+                        req.port = recibo->request.port;
+                        copiar(recibo->request.IP,req.IP,15);
+                        copiar(recibo->request.paquete,req.paquete,recibo->request.size);
 
-                      }
-                  }
-
-                  sem_post(mutex_memRecv);
-              }
+                        req.size = recibo->request.size;
+                        recibo -> request.port = 0;
+                        clear(recibo->request.IP,strlen(recibo->request.IP));
+                        clear(recibo->request.paquete,recibo->request.size);
+                        req.size = 0;
+                        recibo->lleno = 0;
+                        char numero[4];
+                        numero[3] = '\0';
+                        numero[2] = '\0';
+                        numero[1] = '\0';
+                        numero[0] = req.paquete[6];
+                        int * solicitud = reinterpret_cast<int*>(&numero);
+                        cout<<"solicitud: "<<*solicitud<<endl;
+                        switch(*solicitud){
+                            case CONNECT_ACK:
+                            cola_de_ConnectACK.push_back(req);
+                            cout << "Me llego un connect ack!!!!!!!!!!" <<endl;
+                            break;
+                        }
+                    }
+                    sem_post(mutex_memRecv);
+                }
 			}else if(hilo == 1){
-                cout<<"hilo 1\n";
-			//	while(1){
-				//	#pragma omp critical(emisor)
-					//{
-						//for(int i = 0; i < cola_de_ConnectACK.size();++i){
-
-						//	verde.llenarDatos(cola_de_ConnectACK[i].paquete);
-
-					//	}
-
-					//}
-				//}
-
-
-			}
-
+                while(1){
+                    for(int i = 0; i < cola_de_ConnectACK.size();++i){
+                        cout<<"cola_de_ConnectACK.size: "<<cola_de_ConnectACK.size()<<endl;
+                        char id_vecino[4];
+                        id_vecino[0] = cola_de_ConnectACK[i].paquete[16];
+                        id_vecino[1] = cola_de_ConnectACK[i].paquete[15];
+                        id_vecino[2] = '\0';
+                        id_vecino[3] = '\0';
+                        int * num_id_vecino= (int*)(&id_vecino);
+                        int numIDVecino = *num_id_vecino;
+                        cout<<"ANTES DE llenarDatos !?!?!?: "<<numIDVecino<<endl;
+                        verde.llenarDatos(cola_de_ConnectACK[i].paquete,cola_de_ConnectACK[i].size);
+                        char hello[15];
+                        for(int j = 0; j < verde.vecinos.size(); ++j ){
+                          verde.greet_neighbor(hello);
+                          if(cola_de_ConnectACK[j].size > 17){
+                            send(verde.vecinos[j].IP, verde.vecinos[j].puerto, hello, 15);
+                          }
+                        }
+                        cola_de_ConnectACK.erase(cola_de_ConnectACK.begin()+i);
+                    }
+                }
+            }else if(hilo == 2){
+                while (1) {
+                    for (int i = 0; i < verde.vecinos.size(); i++) {
+                        for (int j = 0; j < verde.vecinos.size(); j++) {
+                            if (i!=j) {
+                                if (verde.vecinos[i].puerto > -1) {
+                                    char pack[21];
+                                    verde.send_route(pack, verde.vecinos[j]);
+                                    send(verde.vecinos[i].IP,verde.vecinos[i].puerto, pack, 21);
+                                }
+                            }
+                        }
+                    }
+                    sleep(5);
+                }
+            }
 
 
 	  	}
@@ -279,3 +320,17 @@ int main(int argc, char * argv[]){
   return 0;
 
 }
+/*
+Compilación:
+    Todos los archivos deben estar en la misma carpeta.
+    Nodos verdes:
+        g++ Nodo_verde.cpp n_verde.cpp -fopenmp -pthread -o verde
+    Nodos Naranjas:
+        g++ Nodo_naranja.cpp n_naranja.cpp -pthread -o naranja -fopenmp
+
+Ejecución:
+    Naranjas:
+        ./naranja [número de naranja]
+    Verdes:
+        ./verde [IP del naranja a conectarse] [Puerto del naranja a conectarse] [IP propio] [Puerto propio]
+*/

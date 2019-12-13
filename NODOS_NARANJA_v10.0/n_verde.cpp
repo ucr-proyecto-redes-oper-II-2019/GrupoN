@@ -201,14 +201,78 @@ int N_verde::getPuerto(){
 
 }
 
+void N_verde::send_route(char * paquete, Nodos vec){
+	int num_req = rand();
+    int num_tarea = 118;
+    armar_paquete(paquete,num_req,nombre,num_tarea,0,-1,-1,-1); //revisar
+	char * temp = reinterpret_cast<char*>(&vec.puerto);
+	paquete[16] = temp[1];
+	paquete[17] = temp[0];
 
-void N_verde::llenarDatos(char * paquete){
+	temp = reinterpret_cast<char*>(&vec.distancias);
+	paquete[18] = temp[3];
+	paquete[19] = temp[2];
+	paquete[20] = temp[1];
+	paquete[21] = temp[0];
+}
 
-    char ID[2];
+
+void N_verde::llenarDatos(char * paquete,int size){
+
+    char ID[4];
     ID[0] = paquete[5];
     ID[1] = paquete[4];
+		ID[2] = '\0';
+		ID[3] = '\0';
     int * id = reinterpret_cast<int*>(ID);
     this->nombre = *id;
+
+		Nodos nodo;
+
+		char id_vecino[4];
+		id_vecino[0] = paquete[16];
+		id_vecino[1] = paquete[15];
+		id_vecino[2] = '\0';
+		id_vecino[3] = '\0';
+		int * num_id_vecino= (int*)(&id_vecino);
+		int numIDVecino = *num_id_vecino;
+		nodo.nombre = numIDVecino;
+
+		if(size > 17){
+			char ip_vecino[4];
+			ip_vecino[0] = paquete[20];
+			ip_vecino[1] = paquete[19];
+			ip_vecino[2] = paquete[18];
+			ip_vecino[3] = paquete[17];
+			int * ip_vecino_num = (int*)(ip_vecino);
+			int x = *ip_vecino_num;
+			struct sockaddr_in z;
+			z.sin_addr.s_addr = x;
+			char * IP_vecino = inet_ntoa(z.sin_addr);
+
+
+			char puerto_vecino[2];
+			puerto_vecino[0] = paquete[22];
+			puerto_vecino[1] = paquete[21];
+			/*puerto_vecino[2] = '\0';
+			puerto_vecino[3] = '\0';*/
+			short * puerto_vecino_num = (short*)(&puerto_vecino);
+			short puerto_num = *puerto_vecino_num;
+			nodo.IP = IP_vecino;
+			nodo.puerto = puerto_num;
+			nodo.instanciado = 1;
+			cout<<"mi nombre es:" << this->nombre<< " mi vecino es: " << nodo.nombre << " IP: " << IP_vecino << " puerto: " << puerto_num<<endl;
+			vecinos.push_back(nodo);
+		}else{
+			cout<<"mi nombre es:" << this->nombre << "no tengo vecinos instanciados aha ha pero si tuviera se llamaria: " << nodo.nombre << endl;
+		}
+
+		/*if(puerto_num){
+			nodo.IP = IP_vecino;
+			nodo.puerto = puerto_num;
+			nodo.instanciado = 1;
+		}*/
+
 
 
 

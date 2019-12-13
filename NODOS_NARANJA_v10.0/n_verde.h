@@ -19,12 +19,11 @@ private:
 	        int puerto = -1;
 	        int nombre;
 	        int instanciado;
+            int distancias = -1 ;
 	    };
-
     char * IP;
     int puerto;
     int nombre; //ID
-    vector<Nodos> vecinos;
     vector<char*> files; //primeros dos bytes tienen el numero de segmento,
 
     void armar_paquete(char * paquete, int num_req, int respuesta,
@@ -33,6 +32,7 @@ private:
     void copiar(char * src, char * dest, int tam);
 
 public:
+    vector<Nodos> vecinos;
 	N_verde(char * IP, int puerto);
 	~N_verde();
 
@@ -53,6 +53,7 @@ public:
 	void put_file_ACK(char * paquete);
 	void get_file(char * paquete);
 	void get_file_ACK(char * paquete);
+    void send_route(char * paquete, Nodos vec);
 
 	//de verde a azul:
 	void file_complete_ACK(char * paquete,int num_req);
@@ -64,7 +65,7 @@ public:
 	void exec_stop_ACK(char * paquete,int num_req);
 
 	int getPuerto();
-	void llenarDatos(char*); //despues de hacer connect llena con los datos que le proporciona el naranja
+	void llenarDatos(char*,int); //despues de hacer connect llena con los datos que le proporciona el naranja
 
 
 };

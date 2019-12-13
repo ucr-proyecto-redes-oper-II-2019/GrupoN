@@ -102,19 +102,30 @@ void clear(char * vector,int size){
   }
 }
 
+void quitar_no_disponibles(vector<int> * IDs_verdes_disponibles, int no_disponible){
+  for(int i = 0 ; i < IDs_verdes_disponibles->size(); i++){
+    if(IDs_verdes_disponibles->at(i) == no_disponible){
+      IDs_verdes_disponibles->erase(IDs_verdes_disponibles->begin()+i);
+    }
+  }
+}
 void send(char * IP, int port, char * req_paquete, int tam){
-    sem_wait(mutex_memEnv);
-    //cout<<"entra sem de send"<<endl;
-    if(!envio->lleno){
+    int puso_paquete = 0;
+    while(!puso_paquete){
+      sem_wait(mutex_memEnv);
+      //cout<<"entra sem de send"<<endl;
+      if(!envio->lleno){
         //  cout<<"entra condicion de send, pone en mem comp"<<endl;
         copiar(IP,envio->request.IP,strlen(IP));
         envio->request.port = port;
         copiar(req_paquete,envio->request.paquete,tam);
         envio->request.size = tam;
         envio->lleno = 1;
+        puso_paquete = 1;
         // cout<<"envio lleno en send de naranja: "<<envio->lleno<<endl;
+      }
+      sem_post(mutex_memEnv);
     }
-    sem_post(mutex_memEnv);
 
 }
 
@@ -170,7 +181,7 @@ int main(int argc, char * argv[]){
     key_envio = naranja.getID()+2;
     key_recibo =  naranja.getID()+12411234;
     envio = make_shm(key_envio, &shmid1);
-    cout << "key envio: " <<key_envio << " key recibi: " << key_recibo <<endl;
+    cout << "key envio: " <<key_envio << " key recibo: " << key_recibo <<endl;
     /* MEMORIA COMPARTIDA DE RECIBO */
     recibo = make_shm(key_recibo, &shmid2);
     envio->lleno = 0;
@@ -219,6 +230,7 @@ int main(int argc, char * argv[]){
         vector<request> cola_de_Remove;
         vector<request> cola_de_ConfirmPos;
         vector<request> cola_de_ConfirmPosACK;
+        vector<int> IDs_verdes_disponibles;
         char paquete[PACKETSIZE];
         int port;
         char * IP;
@@ -227,7 +239,7 @@ int main(int argc, char * argv[]){
         //while(1){
 
         //4 hilos para manejar tcpl y los otros 4 son para cada solicitud
-#pragma omp parallel num_threads(6) shared(paquete,port,IP,mutex_memRecv,mutex_memEnv, cola_de_Connect,cola_de_RequestPos, cola_de_Disconnect,cola_de_Remove,cola_de_ConfirmPos)
+#pragma omp parallel num_threads(6) shared(paquete,port,IP,mutex_memRecv,mutex_memEnv, cola_de_Connect,cola_de_RequestPos, cola_de_Disconnect,cola_de_Remove,cola_de_ConfirmPos,IDs_verdes_disponibles)
         {
             if (signal(SIGINT, intHandler) == SIG_ERR)
                 printf("\ncan't catch SIGINT\n");
@@ -236,10 +248,14 @@ int main(int argc, char * argv[]){
             if(hilo == 0) {
                 //#pragma omp critical (receptor)
                 //	{
+                for(int i = 0; i < naranja.getSizeGrafo();i++){
+                    IDs_verdes_disponibles.push_back(naranja.pedirNombreGrafo(i));
+                }
                 while(1){
 
                     //cout<<"entra hilo 0"<<endl;
                     request req;
+
                     //cout << "esto es req.port, a ver si así se inicializa" << req.port<<endl;
                     sem_wait(mutex_memRecv);
                     if(recibo->lleno){
@@ -345,8 +361,10 @@ int main(int argc, char * argv[]){
                             for(int j = 0 ; j < vecinos_naranja.size();j++){
                                 //  cout << "recibo->lleno" << recibo->lleno << endl;
                                 //  cout << "envio->lleno" << envio->lleno << endl;
+
                                 send(vecinos_naranja[j].IP,vecinos_naranja[j].puerto,request_pos_paquete,15);
                                 cout << "se manda request_pos a nodo naranja: " << vecinos_naranja[j].nombre<< " ip: " <<  vecinos_naranja[j].IP << " puerto: " << vecinos_naranja[j].puerto << endl;
+
                                 //tcpl.send(vecinos_naranja[j].IP,vecinos_naranja[j].puerto,request_pos_paquete);
                                 /****si usamos memoria compartida en esta parte se meten los datos en memoria compartida******/
                             }
@@ -357,6 +375,7 @@ int main(int argc, char * argv[]){
                             while(revisar_pos_vacio(arreglo_request_pos, vecinos_naranja.size())){ //mientras que el arreglo tenga espacios vacios
                                 for(int j = 0; j < cola_de_RequestPosACK.size(); j++){
                                     //se tiene que pasar el numero de request del paquete en cola_de_RequestPosACK[i] a numero
+                                    cout << "entro a revisar cola de requestposACK" <<endl;
                                     char req_pos_recibido[4];
                                     req_pos_recibido[3] = cola_de_RequestPosACK[j].paquete[0];
                                     req_pos_recibido[2] = cola_de_RequestPosACK[j].paquete[1];
@@ -411,6 +430,7 @@ int main(int argc, char * argv[]){
 
                             send(vecinos_naranja[j].IP,vecinos_naranja[j].puerto,confirm_pos_paquete,tamCP);
                             cout << "se pone un confirm pos en mem compartida" <<endl;
+                            quitar_no_disponibles(&IDs_verdes_disponibles,num_ID_verde);
                         }
                         int arreglo_confirm_pos[vecinos_naranja.size()];
                         for(int j = 0; j < vecinos_naranja.size(); j++){ //cuando esta en -1 significa que no han llegado todos
@@ -469,12 +489,14 @@ int main(int argc, char * argv[]){
                         //request reqConnect = cola_de_Connect[i];
 
                         //se manda connect ack cuando se reciban todos los confirm_pos_ACK
+
                         naranja.connect_ACK(&ACK,cola_de_Connect[i].port,cola_de_Connect[i].IP,*numDeRequestConnect,*temp); /*revisar parametros connect ack*/
                         //porque estaba comentado?
                         cout << "Sale de connect_ACK: " << ACK.size() << endl;
                         for (int j = 0; j < ACK.size(); j++) {
-                            cout << "Se envía connect ack a: " << ACK[i].IP << "\t:\t"<< ACK[i].port << endl;
-                            send(ACK[i].IP,ACK[i].port,ACK[i].paquete,ACK[i].size);
+
+                            cout << "Se envía connect ack a: " << ACK[j].IP << "\t:\t"<< ACK[j].port << endl;
+                            send(ACK[j].IP,ACK[j].port,ACK[j].paquete,ACK[j].size);
                             //tcpl.send(cola_de_Connect[i].IP,cola_de_Connect[i].port,ACK[i]);
                         }
 
@@ -603,6 +625,7 @@ int main(int argc, char * argv[]){
                         cout << "confirm pos recibido" << *nombre <<endl;
                         naranja.confirm_pos_ACK(paqueteACK,*num_req,*nombre);
                         send(cola_de_ConfirmPos[i].IP,cola_de_ConfirmPos[i].port,paqueteACK,15);
+                        quitar_no_disponibles(&IDs_verdes_disponibles,*nombre);
                         cola_de_ConfirmPos.erase(cola_de_ConfirmPos.begin()+i);
                         //tcpl.send(cola_de_ConfirmPos[i].IP,cola_de_ConfirmPos[i].port,paqueteACK);
                     }

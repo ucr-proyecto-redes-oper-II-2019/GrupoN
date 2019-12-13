@@ -14,8 +14,8 @@ using namespace std;
 
 class Nodos{
 public:
-    char * IP = nullptr;
-    int puerto = -1;
+    char * IP;
+    int puerto = 0;
     int nombre;
 };
 
@@ -58,7 +58,7 @@ public:
     void remove_ACK(char * ACK, int num_ID, int num_req);
     void connect_ACK(vector<request> * ACK, int puerto,char * IP, int num_request,int num_ID);
     void fill_header(char * paquete, int num_request, int i_c_r, int tarea_realizar);
-    void fill_neighbour(char * paquete, int id, unsigned int ip, unsigned short puerto, int size);
+    void fill_neighbour(char * paquete, int id, int ip,  short puerto, int size);
     void copiar(char*,char*,int);
     int getID();
     int getPuerto();
@@ -66,7 +66,6 @@ public:
     int getSizeGrafo();
     int pedirNombreGrafo(int);
     vector<Nodos> getNaranjas();
-
 };
 
 #endif // N_NARANJA_H

@@ -112,6 +112,10 @@ void TCPLite::receive(){
         socklen_t len = sizeof(cliaddr_recv);
         char paquete[REQMAXSIZE];
         //cout<<"Entra a recv antes de recvfrom()\n";
+        cliaddr_recv.sin_family = AF_INET;
+        cliaddr_recv.sin_addr = {0};
+        cliaddr_recv.sin_port = 0;
+        //memset(&cliaddr_recv.sin_zero, 0, sizeof(cliaddr_recv.sin_zero));
         int bytes_recv = recvfrom(sockfd,static_cast<char *>(paquete), REQMAXSIZE, MSG_WAITALL,
                                   reinterpret_cast<struct sockaddr *>(&cliaddr_recv), &len);
         //cout << "SE RECIBIO ALGO\n";
