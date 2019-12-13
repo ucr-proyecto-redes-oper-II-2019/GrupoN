@@ -1,6 +1,21 @@
 #include "tcplite.h"
 
-TCPLite::TCPLite(int tam_bolsas, int puerto_para_recibir){
+TCPLite::TCPLite(){
+  srand(time(0));
+  //int random = (rand()+11)%25;
+  randstring(SEM_NAME,8);
+  SEM_NAME[0] = '/';
+  printf("semaforo tcpl %s\n",SEM_NAME);
+  mutex_bolsa = sem_open(SEM_NAME, O_CREAT | O_EXCL);
+  if (mutex_bolsa == SEM_FAILED) {
+      perror("semaforo bolsa tcpl failed");
+      exit(EXIT_FAILURE);
+  }
+
+}
+
+void TCPLite::setAll(int tam_bolsas, int puerto_para_recibir){
+  //  cout<<"puerto en constructor de tcpl: "<<puerto_para_recibir<<endl;
     bolsa_send = new Bolsa(tam_bolsas);
     bolsa_receive = new Bolsa(tam_bolsas);
     if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0){
@@ -9,142 +24,227 @@ TCPLite::TCPLite(int tam_bolsas, int puerto_para_recibir){
     }
     memset(&servaddr, 0, sizeof(servaddr));
     memset(&cliaddr_send,0 , sizeof(cliaddr_send));
-   memset(&cliaddr_recv,0 , sizeof(cliaddr_recv));
+    memset(&cliaddr_recv,0 , sizeof(cliaddr_recv));
 
     cliaddr_send.sin_family = AF_INET;
     cliaddr_recv.sin_family = AF_INET;
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = INADDR_ANY;
     servaddr.sin_port = htons(static_cast<unsigned short>(puerto_para_recibir));
-    if ( bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0 )
-    {
-	perror("bind failed");
-	exit(EXIT_FAILURE);
+    if ( bind(sockfd, reinterpret_cast<const struct sockaddr *>(&servaddr), sizeof(servaddr)) < 0 ) {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
     }
 }
 
 TCPLite::~TCPLite(){
-    delete bolsa_send;
-    delete bolsa_receive;
+    //closeSocket();
 }
 
+/***************************** LLAMADOS EXTERNOS *****************************/
+
 void TCPLite::send_timeout(){
-    clock_t inicio;
-    double tiempo;
-    //while(1){
+  //  while (1) {
+        //critical.lock();
+
+        clock_t inicio;
+        double tiempo;
         inicio = clock();
         while(1){
-            tiempo = static_cast<double>(clock() - inicio) / CLOCKS_PER_SEC;
+            tiempo = (double)(clock() - inicio) / CLOCKS_PER_SEC;
             if(tiempo >= 3){
                 break;
             }
         }
+        sem_wait(mutex_bolsa);
         for(int i = 0; i < bolsa_send->get_size(); i++){
             request req = bolsa_send->get_paquete(i);
-            cliaddr_send.sin_port = htons((unsigned short)(req.port));
+            //cout << "IP de send timeout: " << req.IP << "Puerto de send timeout: " << req.port << endl;
+            cliaddr_send.sin_port = htons(req.port);
             cliaddr_send.sin_addr.s_addr = inet_addr(req.IP);
-            sendto(sockfd,(const char *)(req.paquete), REQMAXSIZE, MSG_CONFIRM, (const struct sockaddr *)(&cliaddr_send), sizeof(cliaddr_send)); //no se si se manda asi el ack, hay que revisar
-	        cout << "manda algo" << endl;
-            //bolsa_send->get_paquete(i).ttl--;
+            int * solicitud = reinterpret_cast<int*>(&req.paquete[6+5]);
+            //cout << "num_tarea en send timeout " << *solicitud <<endl;
+            sendto(sockfd,(const char*)(req.paquete),(unsigned long)(req.size),
+                   MSG_CONFIRM, (const struct sockaddr *)(&cliaddr_send), sizeof(cliaddr_send));
+            //cout << "envia de verdad\n";
             bolsa_send->borrar_por_ttl(i);
         }
+
+        //critical.unlock();
+        sem_post(mutex_bolsa);
+        usleep(1);
+  //  }
+}
+
+bool TCPLite::send(char * IP, unsigned short port, char paquete[], int tam){
+    //critical.lock();
+
+    char temp[tam];
+    copy(temp,paquete,tam);
+    char pack[HEADERSIZE + tam];
+    //int * solicitud = reinterpret_cast<int*>(&paquete[6]);
+
+    int sn = rand() + 30000%30000;
+    char * p;
+    p = reinterpret_cast<char *>(&sn);
+    pack[0] = '\0';
+    pack[1] = p[3];
+    pack[2] = p[2];
+    pack[3] = p[1];
+    pack[4] = p[0];
+    for(int i=0; i<tam; i++){
+        pack[i+HEADERSIZE]=temp[i];
+    }
+    int * solicitud = reinterpret_cast<int*>(&paquete[6+HEADERSIZE]);
+  //  cout << "num_tarea en send " << *solicitud <<endl;
+    //cout << "tam" << tam <<endl;
+
+    bool x = bolsa_send->insertar(IP,port,pack,1, tam+HEADERSIZE);
+
+    //critical.unlock();
+    return x;
+}
+
+void TCPLite::receive(){
+  //  while (1) {
+      //  critical.lock();
+
+        socklen_t len = sizeof(cliaddr_recv);
+        char paquete[REQMAXSIZE];
+        //cout<<"Entra a recv antes de recvfrom()\n";
+        int bytes_recv = recvfrom(sockfd,static_cast<char *>(paquete), REQMAXSIZE, MSG_WAITALL,
+                                  reinterpret_cast<struct sockaddr *>(&cliaddr_recv), &len);
+        //cout << "SE RECIBIO ALGO\n";
+        int * solicitud = reinterpret_cast<int*>(&paquete[6+5]);
+        //cout << "num_tarea en receive " << *solicitud <<endl;
+        request r;
+
+        copy(r.IP,inet_ntoa(cliaddr_recv.sin_addr),strlen(inet_ntoa(cliaddr_recv.sin_addr)));
+        r.port = ntohs(cliaddr_recv.sin_port);
+        cout<<"IP del request: " << r.IP << "puerto del request" <<r.port<< endl;
+        //r.paquete = new char[bytes_recv];
+        r.size = bytes_recv;
+        //printf("%d\n",bytes_recv);
+        for(int i = 0; i < bytes_recv;i++){
+            r.paquete[i] = paquete[i];
+        }
+        int insertado = -1;
+        sem_wait(mutex_bolsa);
+        if(paquete[0] == '\0'){
+            insertado = bolsa_receive->insertar(r.IP,r.port,r.paquete, 0, bytes_recv);
+            //for (int i = 0; i < 5; ++i) {
+                //cout<<"mandando ACK\n";
+                char ack[5];
+                ack[0] = static_cast<char>(1);
+                ack[1] = paquete[1];
+                ack[2] = paquete[2];
+                ack[3] = paquete[3];
+                ack[4] = paquete[4];
+                send_ACK(r.IP,r.port,ack,bytes_recv);
+                usleep(1);
+            //}
+        }else{
+            cout <<"se recibio un ACK" << endl;
+            if(bolsa_send->borrar_confirmado(r)){
+              cout << "se borro la solicitud que indica el ACK" <<endl;
+            }else{
+              cout << "se recibio un ACK de una solicitud que ya no existe" <<endl;
+            }
+
+        }
+
+      //  critical.unlock();
+        sem_post(mutex_bolsa);
+        usleep(1);
     //}
 }
 
-int TCPLite::send_ACK(char * IP, int port, char paquete[REQMAXSIZE]){
+int TCPLite::getPaqueteRcv(request * req) {
+  //  critical.lock();
+  sem_wait(mutex_bolsa);
+    //cout<<"bolsa_receive size: "<<bolsa_receive->get_size()<<endl;
+    for (int i = 0; i < bolsa_receive->get_size(); i++) {
+        if(bolsa_receive->get_paquete(i).paquete[0] == '\0' ){
+            int * solicitud = reinterpret_cast<int*>(&bolsa_receive->get_paquete(i).paquete[6+5]);
+            //char pack[bolsa_receive->get_paquete(i).size-HEADERSIZE];
+            //copy(req->paquete,pack,req->size);
+            //cout << "num_tarea en getPaqueteRcv antes de copyPaq " << *solicitud <<endl;
+
+            copyPaq(req->paquete,bolsa_receive->get_paquete(i).paquete,HEADERSIZE, bolsa_receive->get_paquete(i).size);
+            //cout << "size que quiero imprimir " << bolsa_receive->get_paquete(i).size << endl;
+            solicitud = reinterpret_cast<int*>(&req->paquete[6]);
+            //cout << "num_tarea en getPaqueteRcv " << *solicitud <<endl;
+            req->port = bolsa_receive->get_paquete(i).port;
+            //cout << "Ip copiado a memoria compartida desde TCPL antes de copy " << bolsa_receive->get_paquete(i).IP << endl;
+            copy(req->IP , bolsa_receive->get_paquete(i).IP,strlen(bolsa_receive->get_paquete(i).IP));
+            //cout << "Ip copiado a memoria compartida desde TCPL " << req->IP<< endl;
+            req->size = bolsa_receive->get_paquete(i).size-HEADERSIZE;
+            //bolsa_receive->borrar_recibido(i);
+            sem_post(mutex_bolsa);
+            //critical.unlock();
+            return i;
+        }
+    }
+    sem_post(mutex_bolsa);
+    //critical.unlock();
+    return -1;
+}
+
+/***************************** LLAMADOS INTERNOS *****************************/
+
+int TCPLite::send_ACK(char * IP, unsigned short port, char paquete[], int tam){
     struct sockaddr_in cliaddr_temp;
     cliaddr_temp.sin_family = AF_INET;
-    cliaddr_temp.sin_port = htons(static_cast<unsigned short>(port));
+    cliaddr_temp.sin_port = htons(port);
     cliaddr_temp.sin_addr.s_addr = inet_addr(IP);
-    sendto(sockfd,static_cast<const char *>(paquete), REQMAXSIZE, MSG_CONFIRM, reinterpret_cast<const struct sockaddr *>(&cliaddr_temp), sizeof(cliaddr_temp));
+    sendto(sockfd,(const char *)(paquete), tam, MSG_CONFIRM, (const struct sockaddr *)(&cliaddr_temp), sizeof(cliaddr_temp));
     return 0;
 }
 
-/*int TCPLite::check_rcvd(){
-  for(int i = 0; i < bolsa_receive->get_size();i++){
-    request req = get_paquete(i);
-    //if(req->paquete, tiene que revisar si el paquete es ack o no
-  }
-}*/
-int TCPLite::send(char * IP, int port, char paquete[REQMAXSIZE]){
-    int sn = static_cast<int>(random());
-    char * p;
-    p = reinterpret_cast<char *>(&sn);
-    paquete[0] = '\0';
-    paquete[1] = p[3];
-    paquete[2] = p[2];
-    paquete[3] = p[1];
-    paquete[4] = p[0];
-    return bolsa_send->insertar(IP,port,paquete,1);
-}
+void TCPLite::copy(char * dest, char * source, int size){
 
-int TCPLite::receive(){
-    socklen_t len;
-    char paquete[REQMAXSIZE];
-    cout<<"Entra a recv antes de recvfrom()\n";
-    recvfrom(sockfd, (char *)(paquete), REQMAXSIZE, MSG_WAITALL, (struct sockaddr *)(&cliaddr_recv), &len);
-    cout << "SE RECIBIO ALGO\n";
-    request r;
-    char * IP = inet_ntoa(cliaddr_recv.sin_addr);
-    r.IP = IP;
-    r.port = ntohs(cliaddr_recv.sin_port);
-    for(int i = 0; i < REQMAXSIZE;i++){
-        r.paquete[i] = paquete[i];
+    for (int i = 0; i < 15; ++i){
+        dest[i] = '\0';
     }
-    int insertado = -1;
-    if(paquete[0] == '\0'){
-        for (int i = 0; i < 5; ++i) {
-            insertado = bolsa_receive->insertar(inet_ntoa(cliaddr_recv.sin_addr),ntohs(cliaddr_recv.sin_port),paquete, 0);
-            cout<<"mandando ACK\n";
-            char ack[5];
-            ack[0] = (char)1;
-            ack[1] = paquete[1];
-            ack[2] = paquete[2];
-            ack[3] = paquete[3];
-            ack[4] = paquete[4];
-            send_ACK(inet_ntoa(cliaddr_recv.sin_addr),ntohs(cliaddr_recv.sin_port),ack );
-        }
-
-    }else{
-        bolsa_send->borrar_confirmado(r);
-        //hay que borrar el ack
-    }
-    return insertado;
-}
-
-
-void TCPLite::copy(char * dest, char * vector,int size){
     for (int i = 0; i < size; ++i){
-        dest[i] = vector[i];
+        dest[i] = source[i];
     }
-
 }
 
 void TCPLite::copyPaq(char * dest, char * vector,int indice,int size){
+    int j = 0;
     for (int i = indice; i < size; ++i){
-        dest[i] = vector[i];
+        dest[j] = vector[i];
+        ++j;
     }
-
-}
-
-//Lo saca de la bolsa recv y lo borra
-int TCPLite::getPaqueteRcv(request * req){
-    //char paquete[REQMAXSIZE-5];
-    cout<<bolsa_receive->get_size()<<endl;
-    for (int i = 0; i < bolsa_receive->get_size(); i++) {
-        if(bolsa_receive->get_paquete(i).paquete[0] == '\0' ){
-            copyPaq(req->paquete,bolsa_receive->get_paquete(i).paquete,5, REQMAXSIZE);
-            req->port = bolsa_receive->get_paquete(i).port;
-            //cout<<"sizeof bolsa_receive->get_paquete(i).IP: "<<sizeof(bolsa_receive->get_paquete(i).IP)<<endl;
-            //copy(req->IP,bolsa_receive->get_paquete(i).IP,sizeof(bolsa_receive->get_paquete(i).IP));
-            req->IP = bolsa_receive->get_paquete(i).IP;
-            bolsa_receive->borrar_recibido(i);
-            return 1;
-        }
-    }
-    return 0;//todos son ack o no hay nada en bolsa rcv
 }
 
 int TCPLite::getBolsaSize(){
     return bolsa_receive->get_size();
+}
+
+void TCPLite::closeSocket(){
+    delete bolsa_send;
+    delete bolsa_receive;
+    close(this->sockfd);
+    sem_close(mutex_bolsa);
+    sem_unlink (SEM_NAME);
+    cout<<"closed socket\n";
+}
+
+void TCPLite::randstring(char randomString[],int length) {
+
+    static char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+    for (int n = 0;n < length;n++) {
+        int key = rand() % (int)(sizeof(charset) -1);
+        randomString[n] = charset[key];
+    }
+
+    randomString[length] = '\0';
+
+}
+
+void TCPLite::borrar_indice_recv(int i){
+  bolsa_receive->borrar_recibido(i);
 }

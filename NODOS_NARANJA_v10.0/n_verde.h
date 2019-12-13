@@ -30,9 +30,10 @@ private:
     void armar_paquete(char * paquete, int num_req, int respuesta,
                         int num_tarea, int num_prioridad, int fuente,
                         int destino, int ttl);
+    void copiar(char * src, char * dest, int tam);
 
 public:
-	N_verde();
+	N_verde(char * IP, int puerto);
 	~N_verde();
 
 	//de verde a naranja:
@@ -62,6 +63,8 @@ public:
 	void exec_ACK(char * paquete,int num_req);
 	void exec_stop_ACK(char * paquete,int num_req);
 
+	int getPuerto();
+	void llenarDatos(char*); //despues de hacer connect llena con los datos que le proporciona el naranja
 
 
 };

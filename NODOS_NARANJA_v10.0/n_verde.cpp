@@ -1,8 +1,8 @@
 #include "n_verde.h"
 
-N_verde::N_verde(){
-	IP = nullptr;
-	puerto = -1;
+N_verde::N_verde(char * IP, int puerto){
+	this->IP = IP;
+	this->puerto = puerto;
 	nombre = -1;
 }
 
@@ -55,19 +55,31 @@ void N_verde:: armar_paquete(char * paquete, int num_req, int respuesta,
 }
 
 
+void N_verde::copiar(char * src, char * dest, int tam){
+  for(int i = 0 ; i < 15 ; i++){
+    dest [i] = '\0';
+  }
+  for (int i = 0; i < tam; i++) {
+    dest[i] = src[i];
+  }
+}
+
+
 //COMUNICACION CON NARANJA
 
 void N_verde::connect(char * paquete){
 	int num_req = rand();
     int num_tarea = 200;
-    armar_paquete(paquete,num_req,1,num_tarea,0);
+    char packet[15];
+    armar_paquete(packet,num_req,1,num_tarea,0,-1,-1,-1); //revisar
+    copiar(packet,paquete,15);
 
 }
 
 void N_verde::disconnect(char * paquete){
 	int num_req = rand();
     int num_tarea = 215;
-    armar_paquete(paquete,num_req,this->nombre,num_tarea,0);
+    armar_paquete(paquete,num_req,this->nombre,num_tarea,0,-1,-1,-1); //revisar
 }
 
 //COMUNICACION ENTRE VERDES
@@ -181,5 +193,23 @@ void N_verde::exec_ACK(char * paquete,int num_req){
 }
 
 void N_verde::exec_stop_ACK(char * paquete,int num_req){
+
+}
+
+int N_verde::getPuerto(){
+    return this->puerto;
+
+}
+
+
+void N_verde::llenarDatos(char * paquete){
+
+    char ID[2];
+    ID[0] = paquete[5];
+    ID[1] = paquete[4];
+    int * id = reinterpret_cast<int*>(ID);
+    this->nombre = *id;
+
+
 
 }

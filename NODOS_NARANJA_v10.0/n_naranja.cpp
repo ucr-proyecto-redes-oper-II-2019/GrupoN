@@ -1,15 +1,19 @@
 #include "n_naranja.h"
 
-N_naranja::N_naranja(string archivo_grafo_verdes, string archivo_configuracion,char* IP){
+N_naranja::N_naranja(string archivo_grafo_verdes, string archivo_configuracion,int indice){
     llenar_grafo_verdes(archivo_grafo_verdes);
     configurar(archivo_configuracion);
-    for (size_t i = 0; i < naranjas.size(); i++) {
+    /*for (size_t i = 0; i < naranjas.size(); i++) {
       if(strcmp(naranjas[i].IP,IP) == 0){
         this->ID = naranjas[i].nombre;
         break;
       }
-    }
-
+    }*/
+    this->IP = naranjas[indice].IP;
+    this->ID = naranjas[indice].nombre;
+    this->puerto = naranjas[indice].puerto;
+    //cout << "IP de este naranja " << this->IP<<endl;
+    //cout << "puerto de este naranja " << this->puerto<<endl;
     srand(static_cast<unsigned int>(time(nullptr)));
     esperando_request_pos_ACK = 0;
 }
@@ -36,9 +40,15 @@ int N_naranja::borrar_ID(int ID){
   }
   return 0;
 }
-int N_naranja::request_pos(char *paquete,int num_req,int num_ID){
+void N_naranja::request_pos(char paquete[15],int num_req,int num_ID, int num_prioridad,int num_tarea){
     //se elige el numero de request
     //int num_req = rand();
+    //char dksdoksdko[15];
+    for (int i = 0; i < 15; i++) {
+      paquete[i] = '\0';
+    }
+
+
     char * r;
     r = reinterpret_cast<char*>(&num_req);
     paquete[0] = r[3];
@@ -49,31 +59,34 @@ int N_naranja::request_pos(char *paquete,int num_req,int num_ID){
     //se elige el nombre aleatorio ID
     //int num_ID = 0;
     while(1){
+        cout << "request pos con num ID verde:" << num_ID <<endl;
         //num_ID= rand() + 65536 % 65535;
         if(!revisar_ID(num_ID)){
             char * x;
             x = reinterpret_cast<char*>(&num_ID);
             paquete[4] = x[1]; //revisar
             paquete[5] = x[0];
+
+            char r[4];
+            r[0] = x[0];
+            r[1] = x[1];
+            r[2] = 0;
+            r[3] = 0;
+            int * temp = reinterpret_cast<int*>(r);
+
+            cout << "se manda request pos con num ID verde:" << *temp <<endl;
             ultimo_nombre_asignado = num_ID; //para luego responder si ese nombre fue asignado por este nodo
             break;
         }
     }
-    //se elige tarea a realizar
-    int num_tarea = 205;
     char * t;
     t = reinterpret_cast<char*>(&num_tarea);
     paquete[6] = t[0];
 
-    //se elige la prioridad
-    int num_prioridad = rand() + 65536 % 65535;
-    char * p;
-    p = reinterpret_cast<char*>(&num_prioridad);
+    char * p = (char *)&num_prioridad;
     paquete[7] = p[1];
     paquete[8] = p[0];
-    ultima_prioridad_asignada = num_prioridad;//para luego responder si ese nombre fue asignado y ver que prioridad gana
-    esperando_request_pos_ACK = 1;
-    return num_ID;
+
 }
 /*los parametros son el paquete que se debe llenar,el numero de request del request_pos originalmente recibido,
 el ID del request_pos originalmente recibido, la prioridad del request_pos originalmente recibido,*/
@@ -85,7 +98,13 @@ void N_naranja::request_pos_ACK(char *ACK, int num_req,int num_ID, int num_prior
     ACK[1] = r[2];
     ACK[2] = r[1];
     ACK[3] = r[0];
-    if(esperando_request_pos_ACK && num_ID == ultimo_nombre_asignado){
+    int ya_instanciado = 0;
+    for(int i = 0; i < verdes_instanciados.size();i++){
+      if(num_ID == verdes_instanciados[i]){
+          ya_instanciado=1;
+      }
+    }
+    if(num_ID == ultimo_nombre_asignado){
       //if(esperando_request_pos_ACK){ //si es un nodo que mando un request_pos a los otros nodos recientemente
         if(num_prioridad > ultima_prioridad_asignada){
             int num_respuesta = 1;
@@ -102,8 +121,19 @@ void N_naranja::request_pos_ACK(char *ACK, int num_req,int num_ID, int num_prior
             ACK[4] = x[1];
             ACK[5] = x[0];
         }else{//si son iguales
+            int num_respuesta = 0;
+            char * x;
+            x = reinterpret_cast<char*>(&num_respuesta);
+            ACK[4] = x[1];
+            ACK[5] = x[0];
             //se compara el numero de nodo, hay que ver donde se asigna el numero de nodo
         }
+    }else if(ya_instanciado){
+      int num_respuesta = 0;
+      char * x;
+      x = reinterpret_cast<char*>(&num_respuesta);
+      ACK[4] = x[1];
+      ACK[5] = x[0];
     }else{//si el ID no es igual o no se esta esperando ningun request_pos_ACK
         int num_respuesta = 1;
         char * x;
@@ -118,7 +148,7 @@ void N_naranja::request_pos_ACK(char *ACK, int num_req,int num_ID, int num_prior
     //el cuerpo va vacio entonces hay que ver que poner para identificarlo como vacio
 }
 
-void N_naranja::confirm_pos(char *paquete, int num_ID, int num_req, char * IP, int port){
+int N_naranja::confirm_pos(char *paquete, int num_ID, int num_req, char * IP, int port){
     esperando_request_pos_ACK = 0; //si se esta mandando un confirm_pos significa que ya no se esta esperando ningun request_pos_ACK
     char * r;
     r = reinterpret_cast<char*>(&num_req);
@@ -148,14 +178,16 @@ void N_naranja::confirm_pos(char *paquete, int num_ID, int num_req, char * IP, i
     x = reinterpret_cast<char*>(&puerto);
     paquete[19] = x[1];
     paquete[20] = x[0];
-    //falta pasar a bytes el IP y el puerto
+
+    verdes_instanciados.push_back(num_ID);
+    return 21;
 }
 
 void N_naranja::confirm_pos_ACK(char *paquete, int num_req, int num_ID){
     //De que depende el responder con el ID o con 0 aqui? creo que siempre se responde con el ID
     /*creo que en los metodos ACK el paquete deberia tener el mismo numero de request que el
      metodo al que le esta respondiendo e.g se manda un confirm_pos con num request 45 entonces se responde con un confirm_pos_ACK con el num_request 45 tambien*/
-
+    verdes_instanciados.push_back(num_ID);
     char * r;
     r = reinterpret_cast<char*>(&num_req);
     paquete[0] = r[3];
@@ -236,37 +268,37 @@ void N_naranja::remove_ACK(char * ACK, int num_ID, int num_req){
     borrar_ID(num_ID);
 }
 
-int N_naranja::encontrar_nombre(char * IP,int puerto, vector<Nodos> * vecinos){
-    int indice = -1;
+int N_naranja::encontrar_nombre(char * IP,int puerto, vector<Nodos> * vecinos, int numID){
+    //int indice = -1;
     int ID = -1;
+
     /**
      * Busca entre el grafo el nodo al que corresponde el nombre y guarda el índice
      */
-    for (int k = 0; k < grafo_verdes.size(); k++){
-        if (strcmp(IP,grafo_verdes[k].IP) == 0 && grafo_verdes[k].puerto == puerto){
-            indice = k;
-            k = grafo_verdes.size();
-            ID = grafo_verdes[k].nombre;
-        }
+    int ind;
+    for(int i = 0; i < grafo_verdes.size(); i++){
+      if(grafo_verdes[i].nombre == numID){
+        ind = i;
+        copiar(IP,grafo_verdes[numID].IP, strlen(IP));
+        grafo_verdes[numID].puerto = puerto;
+        break;
+      }
     }
 
-    /**
-     * Si no existe el nombre retorna fallo
-     */
-    if (indice<0){
-        return ID;
-    }
 
+    cout << "Existe el nodo\n";
     /**
      * Recorre los vecinos del nodo y los inserta en el vector de vecinos
      */
-    for (int j = 0; j < grafo_verdes[indice].vecinos.size(); j++){
-        vecinos->push_back(grafo_verdes[indice].vecinos[j]);
+     cout << "grafo_verdes[ind].vecinos.size(): " <<grafo_verdes[ind].vecinos.size();
+    for (int j = 0; j < grafo_verdes[ind].vecinos.size(); j++){
+        vecinos->push_back(grafo_verdes[ind].vecinos[j]);
     }
 
     /**
      * Retorna la cantidad de vecinos
      */
+    //cout<< "no es encontrar nombre" <<endl;
     return ID;
 }
 
@@ -305,9 +337,12 @@ void N_naranja::fill_neighbour(char * paquete, int id, unsigned int ip, unsigned
     paquete[22] = x[0];
 }
 
-void N_naranja::connect_ACK(vector<char*> * ACK, int puerto,char * IP, int num_request){
+void N_naranja::connect_ACK(vector<request> * ACK, int puerto,char * IP, int num_request,int num_ID){
+    cout << "ENTRA A CONNECT_ACK\n";
     vector<Nodos> vtr;
-    int num_ID = encontrar_nombre(IP,puerto, &vtr);
+    encontrar_nombre(IP,puerto, &vtr,num_ID);
+    //asignarle IP y
+    cout << "se encontro un nombre" <<endl;
     unsigned int ip;
     unsigned short port;
     int tarea = 201;
@@ -315,27 +350,30 @@ void N_naranja::connect_ACK(vector<char*> * ACK, int puerto,char * IP, int num_r
         int size = 2;
         int header_size = 15;
         size += header_size;
-        if (-1 <vtr[i].puerto){
+        if (vtr[i].puerto != -1){
             size += 6;
             ip = inet_addr(vtr[i].IP);
             port = htons(vtr[i].puerto);
         }
+        request req;
+        req.size = size;
+        req.port = puerto;
+        copiar(IP, req.IP,strlen(IP));
+        fill_header(req.paquete,num_request,num_ID,tarea);
 
-        char ack_pack[size];
+        fill_neighbour(req.paquete, num_ID, ip, port, size);
 
-        fill_header(ack_pack,num_request,num_ID,tarea);
-
-        fill_neighbour(ack_pack, num_ID, ip, port, size);
-
-        ACK->push_back(ack_pack);
+        ACK->push_back(req);
+        cout<<"entra en condicion de connect ack"<<endl;
     }
+
 }
 
 void N_naranja::llenar_grafo_verdes(string archivo_grafos_verdes){
   fstream archivo;
   archivo.open(archivo_grafos_verdes,ios::in);
   int cantidad_lineas = count(istreambuf_iterator<char>(archivo),istreambuf_iterator<char>(), '\n');
-  cout << cantidad_lineas << endl;
+  //cout << cantidad_lineas << endl;
   archivo.close();
   archivo.open(archivo_grafos_verdes,ios::in);
   string linea,palabra;
@@ -367,6 +405,15 @@ void N_naranja::llenar_grafo_verdes(string archivo_grafos_verdes){
   archivo.close();
 }
 
+void N_naranja::copiar(char * src, char * dest, int tam){
+  for(int i = 0 ; i < 15 ; i++){
+    dest [i] = '\0';
+  }
+  for (int i = 0; i < tam; i++) {
+    dest[i] = src[i];
+  }
+}
+
 int N_naranja::configurar(string archivo_configuracion)
 {
 
@@ -391,10 +438,14 @@ int N_naranja::configurar(string archivo_configuracion)
           if(!i){
             nodo.IP = (char*)malloc(s.size()+1);
             strcpy(nodo.IP, s.c_str());
+            /*cout<<"size s: "<<s.size()<<endl;
+            copiar((char*)s.c_str(),nodo.IP,s.size());*/
             nodo.IP[s.size()] = '\0';
+          //  cout << "ip sacado de archivo" << nodo.IP <<endl;
           }else{
             stringstream port(s);
             port >> nodo.puerto;
+          //  cout << "port sacado de archivo" << nodo.puerto <<endl;
             nodo.nombre = counter;
           }
       }
@@ -407,6 +458,7 @@ int N_naranja::configurar(string archivo_configuracion)
       cerr << "error!\n";
     }
 
+    infile.close();
     /*for (int i = 0; i < 3; i++) {
       cout<<data.at(i).IP<<" "<<data.at(i).puerto<<" "<<data.at(i).nombre<<endl;
     }*/
@@ -420,4 +472,19 @@ int N_naranja::getID(){
 
 vector<Nodos> N_naranja::getNaranjas(){
   return naranjas;
+}
+
+int N_naranja::getPuerto(){
+    return this->puerto;
+
+}
+char * N_naranja::getIP(){
+  return this->IP;
+}
+
+int N_naranja::getSizeGrafo(){
+  return grafo_verdes.size();
+}
+int N_naranja::pedirNombreGrafo(int indice){
+  return grafo_verdes[indice].nombre;
 }
