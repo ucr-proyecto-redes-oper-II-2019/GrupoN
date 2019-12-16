@@ -1,0 +1,2 @@
+g++ Nodo_naranja.cpp n_naranja.cpp bolsa.cpp tcplite.cpp -pthread -fopenmp -Wno-write-strings -o naranja -std=c++11
+g++ Nodo_verde.cpp n_verde.cpp bolsa.cpp tcplite.cpp -pthread -fopenmp -Wno-write-strings -o verde -std=c++11
